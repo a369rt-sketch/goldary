@@ -1,0 +1,201 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+
+type GoldData = {
+  timestamp: number;
+  metal: string;
+  currency: string;
+  price_ounce_usd: number | null;
+  price_gram_24k: number | null;
+  price_gram_22k: number | null;
+  price_gram_21k: number | null;
+};
+
+function formatMoney(n: number | null, digits = 2) {
+  if (n === null || Number.isNaN(n)) return "—";
+  return n.toLocaleString(undefined, {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+}
+
+function formatDateFromUnix(ts: number) {
+  const d = new Date(ts * 1000);
+  return d.toLocaleString();
+}
+
+export default function GoldStore() {
+  const [data, setData] = useState<GoldData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+
+  // خليتلك سعر صرف قابل للتغيير من الواجهة بدل ما ننشب ب API ثانية
+  const [usdToIqd, setUsdToIqd] = useState<number>(1300);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function run() {
+      try {
+        setLoading(true);
+        setErr(null);
+
+        const res = await fetch("/api/gold", { cache: "no-store" });
+        const json = await res.json();
+
+        if (!res.ok) {
+          throw new Error(json?.error ? `${json.error}` : "Request failed");
+        }
+
+        if (mounted) setData(json);
+      } catch (e: any) {
+        if (mounted) setErr(String(e?.message ?? e));
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    run();
+    const t = setInterval(run, 60_000); // تحديث كل دقيقة
+    return () => {
+      mounted = false;
+      clearInterval(t);
+    };
+  }, []);
+
+  const cards = useMemo(() => {
+    if (!data) return [];
+    return [
+      { title: "غرام 24K", usd: data.price_gram_24k },
+      { title: "غرام 22K", usd: data.price_gram_22k },
+      { title: "غرام 21K", usd: data.price_gram_21k },
+    ];
+  }, [data]);
+
+  const ounceIqd = data?.price_ounce_usd ? data.price_ounce_usd * usdToIqd : null;
+
+  return (
+    <main className="store">
+      <header className="hero">
+        <div className="hero-inner">
+          <div>
+            <p className="badge">GOLDARY • Live Gold</p>
+            <h1>أسعار الذهب لحظة بلحظة</h1>
+            <p className="sub">
+              عرض بشكل متجر: بطاقات، تحويل للدينار، وتحديث تلقائي كل دقيقة.
+            </p>
+          </div>
+
+          <div className="rate-box">
+            <label className="label">سعر الصرف (USD → IQD)</label>
+            <div className="rate-row">
+              <input
+                className="input"
+                type="number"
+                value={usdToIqd}
+                onChange={(e) => setUsdToIqd(Number(e.target.value || 0))}
+                min={0}
+              />
+              <span className="muted">دينار لكل $1</span>
+            </div>
+            <p className="tiny">
+              (خليته يدوي لأن سعر الصرف يتغير حسب السوق. إذا تريدين نربطه بمصدر
+              خارجي بعدين، نسويه.)
+            </p>
+          </div>
+        </div>
+      </header>
+
+      <section className="content">
+        {loading && (
+          <div className="panel">
+            <p className="muted">جاري جلب الأسعار…</p>
+          </div>
+        )}
+
+        {err && (
+          <div className="panel error">
+            <p className="error-title">صار خطأ</p>
+            <p className="muted">{err}</p>
+            <p className="tiny">
+              إذا الخطأ “Missing GOLD_API_KEY” فالمشكلة من `.env.local` أو ما
+              عملتي restart.
+            </p>
+          </div>
+        )}
+
+        {data && !loading && !err && (
+          <>
+            <div className="top-grid">
+              <div className="panel">
+                <p className="muted">آخر تحديث</p>
+                <p className="big">{formatDateFromUnix(data.timestamp)}</p>
+                <div className="hr" />
+                <p className="muted">الأونصة</p>
+                <p className="big">
+                  ${formatMoney(data.price_ounce_usd, 3)}{" "}
+                  <span className="muted small">USD</span>
+                </p>
+                <p className="big">
+                  {formatMoney(ounceIqd, 0)}{" "}
+                  <span className="muted small">IQD</span>
+                </p>
+              </div>
+
+              <div className="panel">
+                <p className="muted">معلومات</p>
+                <p className="big">
+                  Metal: <span className="mono">{data.metal}</span>
+                </p>
+                <p className="big">
+                  Currency: <span className="mono">{data.currency}</span>
+                </p>
+                <div className="hr" />
+                <p className="tiny">
+                  ملاحظة: بعض خطط GoldAPI ما ترجع 21K/22K. إذا شفتِ “—” فهذا يعني
+                  مو موجود من المصدر.
+                </p>
+              </div>
+            </div>
+
+            <h2 className="h2">أسعار الغرام</h2>
+            <div className="grid">
+              {cards.map((c) => {
+                const iqd = c.usd ? c.usd * usdToIqd : null;
+                return (
+                  <div className="card" key={c.title}>
+                    <div className="card-top">
+                      <p className="card-title">{c.title}</p>
+                      <p className="card-chip">Live</p>
+                    </div>
+
+                    <p className="price">
+                      ${formatMoney(c.usd, 3)}{" "}
+                      <span className="muted small">USD</span>
+                    </p>
+                    <p className="price">
+                      {formatMoney(iqd, 0)}{" "}
+                      <span className="muted small">IQD</span>
+                    </p>
+
+                    <div className="hr" />
+                    <p className="tiny muted">
+                      التحويل يعتمد على سعر الصرف اللي فوق.
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+
+            <footer className="footer">
+              <p className="tiny muted">
+                © GOLDARY. Built with Next.js. (للأسف نعم، كله كود.)
+              </p>
+            </footer>
+          </>
+        )}
+      </section>
+    </main>
+  );
+}
