@@ -44,7 +44,7 @@ export default function GoldTicker({ currency, usdToIqd }: Props) {
       return { k24: usd.usd24, k22: usd.usd22, k21: usd.usd21 };
     }
 
-    const iqd = getBaseIqd(data, usdToIqd);
+    const iqd = getBaseIqd(data);
     return { k24: iqd.iqd24, k22: iqd.iqd22, k21: iqd.iqd21 };
   }, [data, currency, usdToIqd]);
 

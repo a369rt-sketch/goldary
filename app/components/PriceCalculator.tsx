@@ -15,6 +15,7 @@ type Props = {
   currency: Currency;
   usdToIqd?: number;
   data?: GoldData;
+  onClose?: () => void;
 };
 
 type Mode = "buy" | "sell";
@@ -41,6 +42,7 @@ export default function PriceCalculator({
   currency,
   usdToIqd = 0,
   data,
+  onClose,
 }: Props) {
   const [liveData, setLiveData] = useState<GoldData | null>(data ?? null);
   const [marketFactors, setMarketFactors] = useState<ProvinceMarketFactor[]>([]);
@@ -275,6 +277,20 @@ const sellUsedFactor = selectedMarket?.sell_used_factor ?? 1;
 
   return (
     <div className="calc">
+      {onClose && (
+        <div className="row-between" style={{ marginBottom: 12 }}>
+          <strong>حاسبة السعر</strong>
+          <button
+            type="button"
+            className="small-btn"
+            onClick={onClose}
+            aria-label="إغلاق"
+          >
+            ✕ إغلاق
+          </button>
+        </div>
+      )}
+
       <div className="calc-prices">
         <div className="calc-prices-row">
           <div>الشراء (المحل يشتري منك)</div>

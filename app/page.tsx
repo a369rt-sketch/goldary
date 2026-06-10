@@ -49,12 +49,13 @@ export default function Home() {
         </button>
       </div>
 
-      <PriceCalculator
-        open={isOpen}
-        onClose={() => setIsOpen(false)}
-        currency={currency}
-        usdToIqd={usdToIqd}
-      />
+      {isOpen ? (
+        <PriceCalculator
+          currency={currency}
+          usdToIqd={usdToIqd}
+          onClose={() => setIsOpen(false)}
+        />
+      ) : null}
     </main>
   );
 }
