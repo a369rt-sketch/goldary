@@ -3,6 +3,8 @@
 import { useState } from "react";
 import GoldTicker from "./components/GoldTicker";
 import PriceCalculator from "./components/PriceCalculator";
+import PublicInsights from "./components/PublicInsights";
+import ShopsPreview from "./components/ShopsPreview";
 
 export default function Home() {
   const [isOpen, setIsOpen] = useState(false);
@@ -56,6 +58,10 @@ export default function Home() {
           onClose={() => setIsOpen(false)}
         />
       ) : null}
+
+      <ShopsPreview />
+
+      <PublicInsights />
     </main>
   );
 }
