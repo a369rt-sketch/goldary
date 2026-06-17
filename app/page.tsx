@@ -46,9 +46,9 @@ export default function Home() {
           Calculate Price Now
         </button>
 
-        <button type="button" className="btn-secondary">
-          Get It Now
-        </button>
+        <a href="/return-calculator" className="btn-secondary">
+          Investment Calculator
+        </a>
       </div>
 
       {isOpen ? (
