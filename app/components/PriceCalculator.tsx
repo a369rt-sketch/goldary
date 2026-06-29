@@ -2,176 +2,93 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/app/lib/supabaseClient";
-import {
-  type Condition,
-  type Currency,
-  getBaseIqd,
-  fmt,
-  type GoldData,
-} from "@/app/lib/goldPricing";
+import { type Condition, type Currency, fmt } from "@/app/lib/goldPricing";
+import { getLatestGramPrice } from "@/app/lib/gramPrices";
 import { provinces } from "@/app/lib/provinces";
 
 type Props = {
   currency: Currency;
-  usdToIqd?: number;
-  data?: GoldData;
   onClose?: () => void;
 };
 
 type Mode = "buy" | "sell";
-type Karat = "24K" | "22K" | "21K" | "18K";
 
-const KARAT_FACTOR: Record<Karat, number> = {
-  "24K": 0.999,
-  "22K": 0.916,
-  "21K": 0.875,
-  "18K": 0.75,
-};
-
-const OUNCE_TO_GRAM = 31.1035;
-
-type ProvinceMarketFactor = {
-  province_key: string;
-  province_name: string;
-  buy_factor: number;
-  sell_new_factor: number;
-  sell_used_factor: number;
-};
-
-export default function PriceCalculator({
-  currency,
-  usdToIqd = 0,
-  data,
-  onClose,
-}: Props) {
-  const [liveData, setLiveData] = useState<GoldData | null>(data ?? null);
-  const [marketFactors, setMarketFactors] = useState<ProvinceMarketFactor[]>([]);
-
+export default function PriceCalculator({ currency, onClose }: Props) {
   const [mode, setMode] = useState<Mode>("sell");
   const [condition, setCondition] = useState<Condition>("new");
-  const [karat, setKarat] = useState<Karat>("24K");
-  const [weight, setWeight] = useState<number>(2);
-  const [laborUsd, setLaborUsd] = useState<number>(1);
-  const [profit, setProfit] = useState<number>(0);
-  const [dollarPrice, setDollarPrice] = useState<number>(1310);
+  const karat = "21K";
+  const [weight, setWeight] = useState<string>("2");
+  const [laborUsd, setLaborUsd] = useState<string>("1");
+  const [profit, setProfit] = useState<string>("0");
+  const [dollarPrice, setDollarPrice] = useState<string>("");
   const [province, setProvince] = useState<string>("qadisiyyah");
+
+  // سعر الغرام الميداني (عيار 21) — آخر صف من gram_prices
+  const [buyGram, setBuyGram] = useState<number>(0);
+  const [sellGram, setSellGram] = useState<number>(0);
+
   const sessionId = useMemo(() => crypto.randomUUID(), []);
 
+  // سعر الدولار من جدول dollar_rate (لتحويل الأجرة دولار→دينار)
   useEffect(() => {
-    async function loadFactors() {
-      const { data: factors, error } = await supabase
-        .from("province_market_factors")
-        .select("*");
+    async function loadDollar() {
+      const { data: row, error } = await supabase
+        .from("dollar_rate")
+        .select("usd_to_iqd, recorded_at")
+        .order("recorded_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      if (!error && factors) {
-        setMarketFactors(factors);
+      if (!error && row?.usd_to_iqd != null) {
+        setDollarPrice(String(row.usd_to_iqd));
       }
-
-      if (error) {
-        console.error("Factors fetch failed:", error);
-      }
+      // لو ماكو صف: يبقى فارغاً
     }
 
-    loadFactors();
+    loadDollar();
   }, []);
 
-  const provinceFactors = useMemo(() => {
-    return marketFactors.find((p) => p.province_key === province);
-  }, [marketFactors, province]);
-
-
+  // سعر شراء/بيع الغرام الحقيقي (آخر صف ميداني)
   useEffect(() => {
     let mounted = true;
 
-    async function loadGold() {
-      try {
-        const res = await fetch("/api/gold", { cache: "no-store" });
-        const json = await res.json();
-
-        if (!mounted) return;
-        if (json?.error) return;
-
-        setLiveData(json);
-      } catch (err) {
-        console.error("PriceCalculator fetch failed:", err);
-      }
+    async function loadGram() {
+      const row = await getLatestGramPrice();
+      if (!mounted || !row) return;
+      setBuyGram(Number(row.buy_gram_iqd) || 0);
+      setSellGram(Number(row.sell_gram_iqd) || 0);
     }
 
-    loadGold();
+    loadGram();
 
     return () => {
       mounted = false;
     };
   }, []);
 
-  const actualData = liveData ?? data ?? null;
-  const effectiveUsdToIqd = Number(actualData?.usdToIqd ?? usdToIqd ?? 0);
+  // سعر الغرام الأساس بالدينار = بيع/شراء الحقيقي حسب نوع العملية
+  const gramPriceIqd = useMemo(
+    () => (mode === "sell" ? sellGram : buyGram),
+    [mode, sellGram, buyGram]
+  );
 
-  const baseIqd = useMemo(() => getBaseIqd(actualData), [actualData]);
-const selectedMarket = marketFactors.find(
-  (item) => item.province_key === province
-);
-
-const buyFactor = selectedMarket?.buy_factor ?? 1;
-const sellNewFactor = selectedMarket?.sell_new_factor ?? 1;
-const sellUsedFactor = selectedMarket?.sell_used_factor ?? 1;
-
-  const local = useMemo(() => {
-    return {
-      buy: {
-        iqd24: Math.round(baseIqd.iqd24 * buyFactor),
-        iqd22: Math.round(baseIqd.iqd22 * buyFactor),
-        iqd21: Math.round(baseIqd.iqd21 * buyFactor),
-      },
-      sellNew: {
-        iqd24: Math.round(baseIqd.iqd24 * sellNewFactor),
-        iqd22: Math.round(baseIqd.iqd22 * sellNewFactor),
-        iqd21: Math.round(baseIqd.iqd21 * sellNewFactor),
-      },
-      sellUsed: {
-        iqd24: Math.round(baseIqd.iqd24 * sellUsedFactor),
-        iqd22: Math.round(baseIqd.iqd22 * sellUsedFactor),
-        iqd21: Math.round(baseIqd.iqd21 * sellUsedFactor),
-      },
-    };
-  }, [baseIqd, buyFactor, sellNewFactor, sellUsedFactor]);
-
-  const ounceUsd = Number(actualData?.ounceUsd ?? 0);
-
+  // نفس القيمة بالعملة المختارة (للتحليلات فقط؛ العرض دائماً بالدينار)
   const gramPrice = useMemo(() => {
-    // وضع البيع: المعادلة الجديدة المعتمدة على سعر الدولار والبورصة
-    if (mode === "sell") {
-      if (!dollarPrice || !ounceUsd) return 0;
-
-      // سعر الغرام بالدينار = (سعر الدولار × معامل العيار × البورصة) ÷ غرامات الأونصة
-      const gramIqd =
-        (dollarPrice * KARAT_FACTOR[karat] * ounceUsd) / OUNCE_TO_GRAM;
-
-      return currency === "USD" ? gramIqd / dollarPrice : gramIqd;
-    }
-
-    // وضع الشراء: يبقى بالمنطق الحالي (معاملات المحافظة)
-    if (currency === "USD") {
-      if (!effectiveUsdToIqd) return 0;
-      if (karat === "24K") return local.buy.iqd24 / effectiveUsdToIqd;
-      if (karat === "22K") return local.buy.iqd22 / effectiveUsdToIqd;
-      return local.buy.iqd21 / effectiveUsdToIqd;
-    }
-
-    if (karat === "24K") return local.buy.iqd24;
-    if (karat === "22K") return local.buy.iqd22;
-    return local.buy.iqd21;
-  }, [currency, mode, karat, local, ounceUsd, dollarPrice, effectiveUsdToIqd]);
+    if (currency !== "USD") return gramPriceIqd;
+    const usd = parseFloat(dollarPrice) || 0;
+    return usd ? gramPriceIqd / usd : 0;
+  }, [currency, gramPriceIqd, dollarPrice]);
 
   const total = useMemo(() => {
-    const goldCost = gramPrice * weight;
+    const goldCost = gramPrice * (Number(weight) || 0);
 
     let labor = 0;
-
     if (mode === "sell" && condition === "new") {
       const laborPerGram =
-        currency === "IQD" ? laborUsd * effectiveUsdToIqd : laborUsd;
-      labor = laborPerGram * weight;
+        currency === "IQD"
+          ? (Number(laborUsd) || 0) * (Number(dollarPrice) || 0)
+          : Number(laborUsd) || 0;
+      labor = laborPerGram * (Number(weight) || 0);
     }
 
     const profitFactor = mode === "sell" ? 1 + (Number(profit) || 0) / 100 : 1;
@@ -183,43 +100,25 @@ const sellUsedFactor = selectedMarket?.sell_used_factor ?? 1;
     laborUsd,
     profit,
     currency,
-    effectiveUsdToIqd,
+    dollarPrice,
     mode,
     condition,
   ]);
 
-  // قيم العرض بالدينار دائماً (مستقلة عن مفتاح USD/IQD) — المستخدم عراقي
-  const gramPriceIqd = useMemo(() => {
-    if (mode === "sell") {
-      if (!dollarPrice || !ounceUsd) return 0;
-      return (dollarPrice * KARAT_FACTOR[karat] * ounceUsd) / OUNCE_TO_GRAM;
-    }
-
-    if (karat === "24K") return local.buy.iqd24;
-    if (karat === "22K") return local.buy.iqd22;
-    return local.buy.iqd21;
-  }, [mode, dollarPrice, ounceUsd, karat, local]);
-
+  // الإجمالي المعروض دائماً بالدينار (المستخدم عراقي)
   const totalIqd = useMemo(() => {
-    const goldCost = gramPriceIqd * weight;
+    const goldCost = gramPriceIqd * (Number(weight) || 0);
 
     let labor = 0;
     if (mode === "sell" && condition === "new") {
-      labor = laborUsd * effectiveUsdToIqd * weight;
+      labor =
+        (Number(laborUsd) || 0) * (Number(dollarPrice) || 0) * (Number(weight) || 0);
     }
 
     const profitFactor = mode === "sell" ? 1 + (Number(profit) || 0) / 100 : 1;
 
     return (goldCost + labor) * profitFactor;
-  }, [
-    gramPriceIqd,
-    weight,
-    mode,
-    condition,
-    laborUsd,
-    effectiveUsdToIqd,
-    profit,
-  ]);
+  }, [gramPriceIqd, weight, mode, condition, laborUsd, dollarPrice, profit]);
 
   useEffect(() => {
     if (!total || total <= 0) return;
@@ -236,20 +135,13 @@ const sellUsedFactor = selectedMarket?.sell_used_factor ?? 1;
             karat,
             operation_type: mode,
             item_condition: condition,
-            weight,
-            manufacturing_fee: laborUsd,
-            profit_percent: profit,
-            market_factor:
-              mode === "buy"
-                ? buyFactor
-                : condition === "new"
-                ? sellNewFactor
-                : sellUsedFactor,
+            weight: Number(weight) || 0,
+            manufacturing_fee: Number(laborUsd) || 0,
+            profit_percent: Number(profit) || 0,
+            market_factor: null,
             calculated_price: total,
             currency,
-            user_modified:
-  Number(profit) > 0 ||
-  Number(laborUsd) > 1,
+            user_modified: Number(profit) > 0 || Number(laborUsd) > 1,
             session_id: sessionId,
           }),
         });
@@ -267,9 +159,6 @@ const sellUsedFactor = selectedMarket?.sell_used_factor ?? 1;
     weight,
     laborUsd,
     profit,
-    buyFactor,
-    sellNewFactor,
-    sellUsedFactor,
     total,
     currency,
     sessionId,
@@ -294,29 +183,12 @@ const sellUsedFactor = selectedMarket?.sell_used_factor ?? 1;
       <div className="calc-prices">
         <div className="calc-prices-row">
           <div>الشراء (المحل يشتري منك)</div>
-          <div>
-            24K: {local.buy.iqd24 ? fmt(local.buy.iqd24, "IQD") : "--"} | 22K:{" "}
-            {local.buy.iqd22 ? fmt(local.buy.iqd22, "IQD") : "--"} | 21K:{" "}
-            {local.buy.iqd21 ? fmt(local.buy.iqd21, "IQD") : "--"}
-          </div>
+          <div>21K: {buyGram ? fmt(buyGram, "IQD") : "--"}</div>
         </div>
 
         <div className="calc-prices-row">
-          <div>البيع جديد</div>
-          <div>
-            24K: {local.sellNew.iqd24 ? fmt(local.sellNew.iqd24, "IQD") : "--"} | 22K:{" "}
-            {local.sellNew.iqd22 ? fmt(local.sellNew.iqd22, "IQD") : "--"} | 21K:{" "}
-            {local.sellNew.iqd21 ? fmt(local.sellNew.iqd21, "IQD") : "--"}
-          </div>
-        </div>
-
-        <div className="calc-prices-row">
-          <div>البيع مستعمل</div>
-          <div>
-            24K: {local.sellUsed.iqd24 ? fmt(local.sellUsed.iqd24, "IQD") : "--"} | 22K:{" "}
-            {local.sellUsed.iqd22 ? fmt(local.sellUsed.iqd22, "IQD") : "--"} | 21K:{" "}
-            {local.sellUsed.iqd21 ? fmt(local.sellUsed.iqd21, "IQD") : "--"}
-          </div>
+          <div>البيع</div>
+          <div>21K: {sellGram ? fmt(sellGram, "IQD") : "--"}</div>
         </div>
       </div>
 
@@ -337,16 +209,14 @@ const sellUsedFactor = selectedMarket?.sell_used_factor ?? 1;
             </option>
           ))}
         </select>
+        <p className="muted small" style={{ marginTop: 4 }}>
+          للإحصاء فقط — لا يؤثر على السعر حالياً.
+        </p>
       </div>
 
       <div style={{ marginTop: 12 }}>
         <label>العيار</label>
-        <select value={karat} onChange={(e) => setKarat(e.target.value as Karat)}>
-          <option value="24K">24K</option>
-          <option value="22K">22K</option>
-          <option value="21K">21K</option>
-          <option value="18K">18K</option>
-        </select>
+        <div>21K</div>
       </div>
 
       <div style={{ marginTop: 12 }}>
@@ -356,7 +226,7 @@ const sellUsedFactor = selectedMarket?.sell_used_factor ?? 1;
           value={dollarPrice}
           min={0}
           step={1}
-          onChange={(e) => setDollarPrice(Number(e.target.value))}
+          onChange={(e) => setDollarPrice(e.target.value)}
         />
       </div>
 
@@ -367,7 +237,7 @@ const sellUsedFactor = selectedMarket?.sell_used_factor ?? 1;
           value={weight}
           min={0}
           step={0.1}
-          onChange={(e) => setWeight(Number(e.target.value))}
+          onChange={(e) => setWeight(e.target.value)}
         />
       </div>
 
@@ -392,7 +262,7 @@ const sellUsedFactor = selectedMarket?.sell_used_factor ?? 1;
             value={laborUsd}
             min={0}
             step={0.1}
-            onChange={(e) => setLaborUsd(Number(e.target.value))}
+            onChange={(e) => setLaborUsd(e.target.value)}
           />
         </div>
       )}
@@ -405,7 +275,7 @@ const sellUsedFactor = selectedMarket?.sell_used_factor ?? 1;
             value={profit}
             min={0}
             step={1}
-            onChange={(e) => setProfit(Number(e.target.value))}
+            onChange={(e) => setProfit(e.target.value)}
           />
         </div>
       )}

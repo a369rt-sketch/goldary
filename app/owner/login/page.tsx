@@ -68,7 +68,7 @@ export default function OwnerLoginPage() {
       return;
     }
 
-    router.push("/owner");
+    router.push("/dashboard");
   }
 
   return (

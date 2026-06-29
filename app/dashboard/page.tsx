@@ -444,7 +444,8 @@ export default function DashboardPage() {
         <div className="card" style={{ maxWidth: 520 }}>
           <div className="card-title">لا يوجد محل مرتبط بحسابك بعد</div>
           <p className="muted" style={{ marginTop: 6 }}>
-            تواصل مع الإدارة لربط محلك بحسابك حتى تتمكن من إدارته.
+            إذا قدّمت طلب انضمام، فهو قيد المراجعة من الإدارة وسيظهر محلك هنا فور الموافقة.
+            وإلا تواصل مع الإدارة لربط محلك بحسابك حتى تتمكن من إدارته.
           </p>
         </div>
       ) : (

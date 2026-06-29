@@ -3,10 +3,7 @@ import GoldTicker from "../components/GoldTicker";
 export default function CollectionPage() {
   return (
     <main className="container">
-      <GoldTicker
-        currency="USD"
-        usdToIqd={Number(process.env.NEXT_PUBLIC_USD_TO_IQD ?? 1310)}
-      />
+      <GoldTicker currency="USD" />
 
       <div className="row-between">
         <h1 className="title">Collection</h1>

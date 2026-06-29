@@ -10,11 +10,14 @@ export default function Home() {
   const [isOpen, setIsOpen] = useState(false);
   const [currency, setCurrency] = useState<"USD" | "IQD">("USD");
 
-  const usdToIqd = Number(process.env.NEXT_PUBLIC_USD_TO_IQD ?? 1310);
-
   return (
     <main className="container">
-      <GoldTicker currency={currency} usdToIqd={usdToIqd} />
+      {/* شريط علوي صغير فوق اللايف */}
+      <div className="topbar">
+        <a href="/owner/login" className="topbar-link">دخول الصاغة</a>
+      </div>
+
+      <GoldTicker currency={currency} />
 
       <div className="currency-row">
         <span className="label">Currency:</span>
@@ -54,7 +57,6 @@ export default function Home() {
       {isOpen ? (
         <PriceCalculator
           currency={currency}
-          usdToIqd={usdToIqd}
           onClose={() => setIsOpen(false)}
         />
       ) : null}

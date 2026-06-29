@@ -4,19 +4,28 @@ import { useEffect, useState } from "react";
 import { provinces } from "@/app/lib/provinces";
 
 type ProvinceRank = { province: string; count: number };
-type MonthActivity = { month: string; count: number };
 
 type Insights = {
   topProvince: string;
   topKarat: string;
   averagePrice: number;
   provinceRanking: ProvinceRank[];
-  monthlyActivity: MonthActivity[];
+  lastUpdated: string | null;
 };
 
 // مفتاح المحافظة → الاسم العربي
 const provinceName = (key: string) =>
   provinces.find((p) => p.key === key)?.name ?? key;
+
+// تنسيق تاريخ آخر تحديث بصيغة مقروءة
+const formatUpdated = (iso: string | null) =>
+  iso
+    ? new Date(iso).toLocaleDateString("ar", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : "—";
 
 export default function PublicInsights() {
   const [data, setData] = useState<Insights | null>(null);
@@ -66,7 +75,6 @@ export default function PublicInsights() {
     );
   }
 
-  const maxMonth = Math.max(1, ...data.monthlyActivity.map((m) => m.count));
   const maxRank = Math.max(1, ...data.provinceRanking.map((p) => p.count));
   const topRanking = data.provinceRanking.slice(0, 6);
 
@@ -75,61 +83,22 @@ export default function PublicInsights() {
       <h2 className="h2">إحصاءات السوق</h2>
 
       <div className="grid">
-        {/* متوسط السعر */}
+        {/* متوسط سعر بيع الغرام (عيار 21) عبر المحلات */}
         <div className="card">
-          <div className="card-title">متوسط السعر المحسوب</div>
+          <div className="card-title">متوسط سعر الغرام (21K)</div>
           <div className="price" style={{ color: "var(--gold2)", marginTop: 8 }}>
             {data.averagePrice.toLocaleString()}
           </div>
-        </div>
-
-        {/* أعلى عيار */}
-        <div className="card">
-          <div className="card-title">أعلى عيار مطلوب</div>
-          <div className="price" style={{ color: "var(--gold2)", marginTop: 8 }}>
-            {data.topKarat}
-          </div>
           <div className="muted small" style={{ marginTop: 6 }}>
-            الأكثر طلباً في {provinceName(data.topProvince)}
+            من أسعار المحلات الحقيقية
           </div>
         </div>
 
-        {/* النشاط الشهري */}
+        {/* آخر تحديث */}
         <div className="card">
-          <div className="card-title">النشاط الشهري</div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "flex-end",
-              gap: 6,
-              height: 120,
-              marginTop: 12,
-            }}
-          >
-            {data.monthlyActivity.map((m) => (
-              <div
-                key={m.month}
-                style={{
-                  flex: 1,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 4,
-                }}
-              >
-                <div
-                  title={`${m.count}`}
-                  style={{
-                    width: "100%",
-                    height: `${(m.count / maxMonth) * 90}%`,
-                    minHeight: m.count > 0 ? 4 : 0,
-                    background: "linear-gradient(180deg, var(--gold2), var(--gold))",
-                    borderRadius: "6px 6px 2px 2px",
-                  }}
-                />
-                <span className="tiny muted">{m.month}</span>
-              </div>
-            ))}
+          <div className="card-title">آخر تحديث</div>
+          <div className="price" style={{ color: "var(--gold2)", marginTop: 8 }}>
+            {formatUpdated(data.lastUpdated)}
           </div>
         </div>
 
