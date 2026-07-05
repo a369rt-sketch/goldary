@@ -1,0 +1,16 @@
+name: Gold price cron
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # كل 15 دقيقة (توقيت GitHub best-effort)
+  workflow_dispatch:          # تشغيل يدوي من تبويب Actions
+
+jobs:
+  fetch-gold:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger gold price fetch
+        run: |
+          curl -fsS \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            https://goldary.vercel.app/api/cron/gold
