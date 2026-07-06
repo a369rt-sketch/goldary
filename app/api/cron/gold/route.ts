@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 // ثوابت المعادلة (كما هي، بدون تغيير المنطق)
 const OUNCE_TO_GRAM = 31.1035;
 const KARAT_21 = 0.875; // نقاء عيار 21
-const NUMRA = 90; // خصم الشراء بالدولار على مستوى الأونصة
+// ملاحظة: usd و numra يُقرآن من قاعدة البيانات (dollar_rate و numra_rate) لكل نداء
 
 export async function GET(req: Request) {
   // 1) الحماية — لازم يطابق CRON_SECRET
@@ -19,8 +19,7 @@ export async function GET(req: Request) {
 
   // 2) المتغيّرات المطلوبة
   const apiKey = process.env.UNIRATE_API_KEY;
-  const usd = Number(process.env.NEXT_PUBLIC_USD_TO_IQD);
-  if (!apiKey || !Number.isFinite(usd) || usd <= 0) {
+  if (!apiKey) {
     return NextResponse.json({ ok: false, error: "missing env" }, { status: 500 });
   }
 
@@ -51,17 +50,45 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "invalid rate" }, { status: 502 });
   }
 
-  // 4) الحساب — حرفياً كما اعتُمد (لا تغيير للمنطق)
-  const sell_gram_iqd = (ounceUsd * KARAT_21 * usd) / OUNCE_TO_GRAM;
-  const buy_gram_iqd = ((ounceUsd - NUMRA) / OUNCE_TO_GRAM) * KARAT_21 * usd;
+  // 4) قراءة سعر الدولار من dollar_rate (آخر صف) — تُستعمل كما هي بدون تحويل
+  const { data: dollarRow, error: dollarErr } = await supabaseAdmin
+    .from("dollar_rate")
+    .select("usd_to_iqd, recorded_at")
+    .order("recorded_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-  // 5) الكتابة عبر service role (يتجاوز RLS)
+  const usd = Number(dollarRow?.usd_to_iqd);
+  if (dollarErr || !Number.isFinite(usd) || usd <= 0) {
+    console.error("dollar_rate read failed/empty:", dollarErr?.message);
+    return NextResponse.json({ ok: false, error: "no dollar_rate" }, { status: 502 });
+  }
+
+  // 5) قراءة النمرة من numra_rate (آخر صف) — تُستعمل كما هي بدون تحويل
+  const { data: numraRow, error: numraErr } = await supabaseAdmin
+    .from("numra_rate")
+    .select("numra, recorded_at")
+    .order("recorded_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const numra = Number(numraRow?.numra);
+  if (numraErr || !Number.isFinite(numra)) {
+    console.error("numra_rate read failed/empty:", numraErr?.message);
+    return NextResponse.json({ ok: false, error: "no numra_rate" }, { status: 502 });
+  }
+
+  // 6) الحساب — حرفياً كما اعتُمد (لا تغيير للمنطق)، usd و numra من الجدولين
+  const sell_gram_iqd = (ounceUsd * KARAT_21 * usd) / OUNCE_TO_GRAM;
+  const buy_gram_iqd = ((ounceUsd - numra) / OUNCE_TO_GRAM) * KARAT_21 * usd;
+
+  // 7) الكتابة عبر service role (يتجاوز RLS) — نوثّق كل صف بالقيم التي حُسب بها
   const { error } = await supabaseAdmin.from("gram_prices").insert({
     karat: "21",
     buy_gram_iqd: Math.round(buy_gram_iqd),
     sell_gram_iqd: Math.round(sell_gram_iqd),
     usd_to_iqd: usd,
-    numra: NUMRA,
+    numra: numra,
     recorded_at: new Date().toISOString(),
   });
 
