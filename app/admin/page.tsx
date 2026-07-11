@@ -22,19 +22,58 @@ import {
 
 
 
-function Sparkline() {
+// يطبّع سلسلة أرقام إلى نقاط SVG داخل مستطيل w×h مع حاشية pad.
+// x موزّعة بالتساوي، y مقلوبة ومطبّعة بين min/max (لو max==min → خط أوسط).
+function toPoints(series: number[], w: number, h: number, pad: number): string {
+  const n = series.length;
+  if (n < 2) return "";
+  const min = Math.min(...series);
+  const max = Math.max(...series);
+  const span = max - min;
+  return series
+    .map((v, i) => {
+      const x = (i / (n - 1)) * w;
+      const y =
+        span === 0
+          ? h / 2
+          : h - pad - ((v - min) / span) * (h - 2 * pad);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+}
+
+function Sparkline({ series }: { series?: number[] }) {
+  const pts = Array.isArray(series) ? toPoints(series, 180, 40, 4) : "";
   return (
     <svg viewBox="0 0 180 40" className="sparkline">
-      <polyline
-        points="0,28 14,22 28,26 42,16 58,22 72,14 88,18 102,25 116,20 130,30 144,12 158,21 172,14 180,18"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
+      {pts ? (
+        <polyline points={pts} fill="none" stroke="currentColor" strokeWidth="2" />
+      ) : (
+        <line
+          x1="0"
+          y1="20"
+          x2="180"
+          y2="20"
+          stroke="currentColor"
+          strokeWidth="1"
+          opacity="0.3"
+        />
+      )}
     </svg>
   );
 }
-function StatCard({ icon, title, value, sub, percent }: any) {
+function StatCard({ icon, title, value, sub, change, series }: any) {
+  const hasChange = change != null && Number.isFinite(change);
+  const positive = hasChange && change >= 0;
+  const changeColor = !hasChange
+    ? "rgba(255,255,255,0.55)"
+    : positive
+    ? "#b7ffc5"
+    : "#ff8f8f";
+  const changeText = !hasChange
+    ? "—"
+    : `${positive ? "+" : "−"} ${Math.abs(change)}%`;
+
   return (
     <div className="card stat">
       <div className="statTop">
@@ -47,9 +86,9 @@ function StatCard({ icon, title, value, sub, percent }: any) {
       </div>
       <div className="line" />
       <div className="statBottom">
-        <Sparkline />
+        <Sparkline series={series} />
         <div>
-          <b>{percent}</b>
+          <b style={{ color: changeColor }}>{changeText}</b>
           <small>vs last 30 days</small>
         </div>
       </div>
@@ -114,9 +153,19 @@ const months =
           <div className="system">
             <div>
               <h4>Live System</h4>
-              <p>All systems active</p>
+              {summary == null ? (
+                <p style={{ color: "rgba(255,255,255,0.55)" }}>Checking…</p>
+              ) : summary.isLive ? (
+                <p>All systems active</p>
+              ) : (
+                <p style={{ color: "#ffcc4a" }}>
+                  {summary.lastUpdate
+                    ? `آخر تحديث: ${new Date(summary.lastUpdate).toLocaleString()}`
+                    : "لا توجد تغذية أسعار بعد"}
+                </p>
+              )}
             </div>
-            <i />
+            <i style={summary && !summary.isLive ? { background: "#ffcc4a" } : undefined} />
             <div className="rock" />
           </div>
         </aside>
@@ -148,15 +197,15 @@ const months =
             </button>
           </header>
           <section className="statsGrid">
-          <StatCard icon={<Calculator size={30} />} title="Total Calculations" value={summary?.totalCalculations ?? 0} sub="All pricing events" percent="+ 12.4%" />
-<StatCard icon={<Coins size={30} />} title="Avg Calculation Value" value={`${summary?.averagePrice?.toLocaleString() ?? 0} IQD`} sub="Average user calculation" percent="+ 8.7%" />
-<StatCard icon={<Users size={30} />} title="Modified Users" value={summary?.modifiedUsers ?? 0} sub="Adjusted inputs" percent="+ 15.3%" />
+          <StatCard icon={<Calculator size={30} />} title="Total Calculations" value={summary?.totalCalculations ?? 0} sub="All pricing events" change={summary?.totalChange ?? null} series={summary?.priceSeries} />
+<StatCard icon={<Coins size={30} />} title="Avg Calculation Value" value={`${summary?.averagePrice?.toLocaleString() ?? 0} IQD`} sub="Average user calculation" change={summary?.avgChange ?? null} series={summary?.priceSeries} />
+<StatCard icon={<Users size={30} />} title="Modified Users" value={summary?.modifiedUsers ?? 0} sub="Adjusted inputs" change={summary?.modifiedChange ?? null} series={summary?.priceSeries} />
 <StatCard icon={<PieChart size={30} />} title="Customization Rate" value={`${Math.round(
   ((summary?.modifiedUsers || 0) /
     (summary?.totalCalculations || 1)) *
     100
 )}%`}
- sub="Users who modified inputs" percent="+ 6.2%" />
+ sub="Users who modified inputs" change={summary?.customizationChange ?? null} series={summary?.priceSeries} />
           </section>
           <section className="grid">
             <div className="card trends">
@@ -209,26 +258,52 @@ const months =
                   <h3>Market Movement</h3>
                   <p>Price Trend Analysis</p>
                 </div>
-                <button className="green">+12.4%</button>
+                {(() => {
+                  const m = summary?.marketMovement;
+                  const has = m != null && Number.isFinite(m);
+                  const pos = has && m >= 0;
+                  const color = !has
+                    ? "rgba(255,255,255,0.7)"
+                    : pos
+                    ? "#8dff9d"
+                    : "#ff8f8f";
+                  const text = !has ? "—" : `${pos ? "+" : "−"}${Math.abs(m)}%`;
+                  return <button style={{ color }}>{text}</button>;
+                })()}
               </div>
-              <svg viewBox="0 0 680 240" className="chart">
-                <defs>
-                  <linearGradient id="goldFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#f6c54a" stopOpacity="0.35" />
-                    <stop offset="100%" stopColor="#f6c54a" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-                <polygon
-                  points="0,190 65,160 130,155 195,110 260,140 325,92 390,130 455,110 520,70 585,100 650,45 680,20 680,230 0,230"
-                  fill="url(#goldFill)"
-                />
-                <polyline
-                  points="0,190 65,160 130,155 195,110 260,140 325,92 390,130 455,110 520,70 585,100 650,45 680,20"
-                  fill="none"
-                  stroke="#ffd35a"
-                  strokeWidth="3"
-                />
-              </svg>
+              {Array.isArray(summary?.priceSeries) &&
+              summary.priceSeries.length >= 2 ? (
+                <svg viewBox="0 0 680 240" className="chart">
+                  <defs>
+                    <linearGradient id="goldFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f6c54a" stopOpacity="0.35" />
+                      <stop offset="100%" stopColor="#f6c54a" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  <polygon
+                    points={`${toPoints(summary.priceSeries, 680, 240, 20)} 680,240 0,240`}
+                    fill="url(#goldFill)"
+                  />
+                  <polyline
+                    points={toPoints(summary.priceSeries, 680, 240, 20)}
+                    fill="none"
+                    stroke="#ffd35a"
+                    strokeWidth="3"
+                  />
+                </svg>
+              ) : (
+                <div
+                  style={{
+                    height: 275,
+                    marginTop: 20,
+                    display: "grid",
+                    placeItems: "center",
+                    color: "rgba(255,255,255,0.45)",
+                  }}
+                >
+                  لا توجد بيانات كافية لعرض المنحنى
+                </div>
+              )}
             </div>
             <div className="card notes">
               <h3>Intelligence Notes</h3>

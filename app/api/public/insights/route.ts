@@ -1,76 +1,98 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-// مفتاح anon العام فقط — ممنوع منعاً باتاً استعمال SUPABASE_SERVICE_ROLE_KEY هنا
+// service role على الخادم فقط. الرد يحتوي **فقط** تجميعات عامة آمنة للزائر:
+// أسعار الغرام، اتجاه السوق، سلسلة السعر، ترتيب المحافظات (نِسَب نسبية بلا أعداد خام)،
+// العيار الأكثر طلباً، آخر تحديث + Live. ممنوع منعاً باتاً إرجاع أي مقياس إداري
+// (Total Calculations / Modified Users / Customization Rate) أو أي صفوف خام.
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// إحصاءات صادقة محسوبة من أسعار المحلات الحقيقية لعيار 21 فقط.
+const DAY = 24 * 60 * 60 * 1000;
+const MAX_POINTS = 40;
+
 export async function GET() {
   try {
-    // شحن أسعار عيار 21 (الأقدم أولاً حتى يفوز الأحدث عند البناء)
-    const { data: priceRows, error: priceErr } = await supabase
-      .from("shop_prices")
-      .select("shop_id, price, updated_at")
-      .eq("karat", "21K")
-      .order("updated_at", { ascending: true });
+    const now = Date.now();
 
-    if (priceErr) {
-      return NextResponse.json({ error: priceErr.message }, { status: 500 });
+    // ---- gram_prices: السعر الحي 21K + آخر تحديث + Live ----
+    const { data: lastGram } = await supabase
+      .from("gram_prices")
+      .select("buy_gram_iqd, sell_gram_iqd, recorded_at")
+      .order("recorded_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const buyGram = lastGram?.buy_gram_iqd != null ? Number(lastGram.buy_gram_iqd) : null;
+    const sellGram = lastGram?.sell_gram_iqd != null ? Number(lastGram.sell_gram_iqd) : null;
+    const lastUpdate = lastGram?.recorded_at ?? null;
+    const minutesSince = lastUpdate
+      ? (now - new Date(lastUpdate).getTime()) / 60000
+      : null;
+    const isLive = minutesSince != null && minutesSince <= 30;
+
+    // ---- gram_prices: سلسلة آخر 30 يوم + اتجاه السوق ----
+    const since = new Date(now - 30 * DAY).toISOString();
+    const { data: priceRows } = await supabase
+      .from("gram_prices")
+      .select("recorded_at, sell_gram_iqd")
+      .gte("recorded_at", since)
+      .order("recorded_at", { ascending: true });
+
+    const rawSeries = (priceRows ?? [])
+      .map((r: any) => Number(r.sell_gram_iqd))
+      .filter((n: number) => Number.isFinite(n));
+
+    let priceSeries = rawSeries;
+    if (rawSeries.length > MAX_POINTS) {
+      const step = (rawSeries.length - 1) / (MAX_POINTS - 1);
+      priceSeries = Array.from({ length: MAX_POINTS }, (_, i) =>
+        rawSeries[Math.round(i * step)]
+      );
     }
 
-    // شحن المحافظات للمحلات
-    const { data: shopRows, error: shopErr } = await supabase
-      .from("shops")
-      .select("id, province");
+    const marketMovement =
+      rawSeries.length >= 2 && rawSeries[0] > 0
+        ? Math.round(
+            ((rawSeries[rawSeries.length - 1] - rawSeries[0]) / rawSeries[0]) *
+              1000
+          ) / 10
+        : null;
 
-    if (shopErr) {
-      return NextResponse.json({ error: shopErr.message }, { status: 500 });
+    // ---- user_calculations: ترتيب المحافظات (نِسَب نسبية) + العيار الأكثر طلباً ----
+    const { data: calcRows } = await supabase
+      .from("user_calculations")
+      .select("province, karat");
+
+    const provinceCount: Record<string, number> = {};
+    const karatCount: Record<string, number> = {};
+    for (const row of calcRows ?? []) {
+      if (row.province) provinceCount[row.province] = (provinceCount[row.province] || 0) + 1;
+      if (row.karat) karatCount[row.karat] = (karatCount[row.karat] || 0) + 1;
     }
 
-    const provinceOf = new Map<string, string>();
-    for (const s of shopRows ?? []) {
-      provinceOf.set(s.id as string, (s.province as string) ?? "");
-    }
+    const sortedProvinces = Object.entries(provinceCount).sort((a, b) => b[1] - a[1]);
+    const maxProvince = sortedProvinces[0]?.[1] || 1;
+    // نِسَب نسبية فقط (بلا أعداد خام حتى لا يُشتقّ الإجمالي)
+    const provinceRanking = sortedProvinces.slice(0, 6).map(([province, count]) => ({
+      province,
+      pct: Math.round((count / maxProvince) * 100),
+    }));
 
-    // آخر سعر 21 لكل محل (الأحدث يفوز) + أحدث وقت تحديث إجمالي
-    const latest21 = new Map<string, number>();
-    let lastUpdated: string | null = null;
-
-    for (const row of priceRows ?? []) {
-      const price = Number(row.price);
-      if (!Number.isFinite(price)) continue;
-      latest21.set(row.shop_id as string, price);
-      lastUpdated = row.updated_at as string;
-    }
-
-    // المتوسط = متوسط آخر سعر 21 عبر المحلات (دينار/غرام) — وحدة صحيحة
-    const prices = [...latest21.values()];
-    const averagePrice =
-      prices.length > 0
-        ? Math.round(prices.reduce((a, b) => a + b, 0) / prices.length)
-        : 0;
-
-    // ترتيب المحافظات حسب عدد المحلات التي لها سعر 21
-    const provinceCount = new Map<string, number>();
-    for (const shopId of latest21.keys()) {
-      const prov = provinceOf.get(shopId);
-      if (!prov) continue;
-      provinceCount.set(prov, (provinceCount.get(prov) ?? 0) + 1);
-    }
-
-    const provinceRanking = [...provinceCount.entries()]
-      .map(([province, count]) => ({ province, count }))
-      .sort((a, b) => b.count - a.count);
+    const topKarat =
+      Object.entries(karatCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
 
     return NextResponse.json({
-      topProvince: provinceRanking[0]?.province ?? "",
-      topKarat: "21K",
-      averagePrice,
+      buyGram,
+      sellGram,
+      priceSeries,
+      marketMovement,
       provinceRanking,
-      lastUpdated,
+      topKarat,
+      lastUpdate,
+      isLive,
     });
   } catch {
     return NextResponse.json({ error: "Server error" }, { status: 500 });
