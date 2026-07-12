@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { provinces } from "@/app/lib/provinces";
 
 type ProvinceRank = { province: string; pct: number };
@@ -22,15 +22,19 @@ const provinceName = (key: string) =>
 
 const fmtIqd = (n: number) => `${Math.round(n).toLocaleString("en-US")} د.ع`;
 
-const formatUpdated = (iso: string | null) =>
-  iso
-    ? new Date(iso).toLocaleString("ar", {
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "—";
+// وقت نسبي حيّ: "قبل X دقيقة/ساعة/يوم"
+const relativeTime = (iso: string | null, now: number): string => {
+  if (!iso) return "—";
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return "—";
+  const diffMin = Math.floor((now - t) / 60000);
+  if (diffMin < 1) return "قبل لحظات";
+  if (diffMin < 60) return `قبل ${diffMin} دقيقة`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `قبل ${diffHr} ساعة`;
+  const diffDay = Math.floor(diffHr / 24);
+  return `قبل ${diffDay} يوم`;
+};
 
 // تطبيع سلسلة أرقام إلى نقاط SVG داخل w×h مع حاشية pad
 function toPoints(series: number[], w: number, h: number, pad: number): string {
@@ -51,6 +55,9 @@ function toPoints(series: number[], w: number, h: number, pad: number): string {
 export default function PublicInsights() {
   const [data, setData] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState(() => Date.now());
+  const [flash, setFlash] = useState(false);
+  const prevPrice = useRef<{ buy: number | null; sell: number | null } | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -72,6 +79,25 @@ export default function PublicInsights() {
       alive = false;
     };
   }, []);
+
+  // "آخر تحديث" النسبي يعيد الحساب كل دقيقة
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(id);
+  }, []);
+
+  // وميض ذهبي خفيف عند تغيّر السعر (بلا وميض عند أول تحميل)
+  useEffect(() => {
+    if (!data) return;
+    const prev = prevPrice.current;
+    if (prev && (prev.buy !== data.buyGram || prev.sell !== data.sellGram)) {
+      setFlash(true);
+      const id = setTimeout(() => setFlash(false), 600);
+      prevPrice.current = { buy: data.buyGram, sell: data.sellGram };
+      return () => clearTimeout(id);
+    }
+    prevPrice.current = { buy: data.buyGram, sell: data.sellGram };
+  }, [data]);
 
   const hasSeries = !!data && Array.isArray(data.priceSeries) && data.priceSeries.length >= 2;
   const hasRanking = !!data && data.provinceRanking?.length > 0;
@@ -112,17 +138,21 @@ export default function PublicInsights() {
               <div className="pi-priceRow">
                 <div>
                   <span className="pi-lbl">بيع</span>
-                  <b className="pi-gold">{data.sellGram ? fmtIqd(data.sellGram) : "—"}</b>
+                  <b className={`pi-gold ${flash ? "flash" : ""}`}>
+                    {data.sellGram ? fmtIqd(data.sellGram) : "—"}
+                  </b>
                 </div>
                 <div>
                   <span className="pi-lbl">شراء</span>
-                  <b className="pi-gold">{data.buyGram ? fmtIqd(data.buyGram) : "—"}</b>
+                  <b className={`pi-gold ${flash ? "flash" : ""}`}>
+                    {data.buyGram ? fmtIqd(data.buyGram) : "—"}
+                  </b>
                 </div>
               </div>
             ) : (
               <p className="pi-muted">لا يوجد سعر بعد</p>
             )}
-            <div className="pi-sub">آخر تحديث: {formatUpdated(data.lastUpdate)}</div>
+            <div className="pi-sub">آخر تحديث: {relativeTime(data.lastUpdate, now)}</div>
           </div>
 
           {/* اتجاه السوق */}
@@ -151,10 +181,13 @@ export default function PublicInsights() {
                   </linearGradient>
                 </defs>
                 <polygon
+                  className="pi-fill"
                   points={`${toPoints(data.priceSeries, 600, 160, 14)} 600,160 0,160`}
                   fill="url(#piFill)"
                 />
                 <polyline
+                  className="pi-drawline"
+                  pathLength={1}
                   points={toPoints(data.priceSeries, 600, 160, 14)}
                   fill="none"
                   stroke="#ffd35a"
@@ -342,6 +375,112 @@ export default function PublicInsights() {
           .pi-chartCard,
           .pi-rankCard {
             grid-column: span 1;
+          }
+        }
+
+        /* ===== الحركات (طبقة بصرية خفيفة) ===== */
+        @keyframes pi-pulse {
+          0%,
+          100% {
+            transform: scale(1);
+            opacity: 0.85;
+          }
+          50% {
+            transform: scale(1.14);
+            opacity: 1;
+          }
+        }
+        .pi-live.on i {
+          animation: pi-pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pi-flash {
+          0% {
+            color: #fff6d8;
+            text-shadow: 0 0 14px rgba(255, 211, 90, 0.85);
+          }
+          100% {
+            color: #ffd35a;
+            text-shadow: none;
+          }
+        }
+        .pi-gold.flash {
+          animation: pi-flash 0.6s ease-out;
+        }
+
+        @keyframes pi-enter {
+          from {
+            opacity: 0;
+            transform: translateY(8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .pi-card {
+          animation: pi-enter 0.5s ease both;
+        }
+        .pi-card:nth-child(1) {
+          animation-delay: 0.04s;
+        }
+        .pi-card:nth-child(2) {
+          animation-delay: 0.09s;
+        }
+        .pi-card:nth-child(3) {
+          animation-delay: 0.14s;
+        }
+        .pi-card:nth-child(4) {
+          animation-delay: 0.19s;
+        }
+        .pi-card:nth-child(5) {
+          animation-delay: 0.24s;
+        }
+
+        @keyframes pi-draw {
+          from {
+            stroke-dashoffset: 1;
+          }
+          to {
+            stroke-dashoffset: 0;
+          }
+        }
+        .pi-drawline {
+          stroke-dasharray: 1;
+          stroke-dashoffset: 1;
+          animation: pi-draw 1s ease forwards;
+        }
+
+        @keyframes pi-fade {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        .pi-fill {
+          animation: pi-fade 1s ease forwards;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .pi-live.on i,
+          .pi-gold.flash,
+          .pi-card,
+          .pi-drawline,
+          .pi-fill {
+            animation: none !important;
+          }
+          .pi-card {
+            opacity: 1;
+            transform: none;
+          }
+          .pi-drawline {
+            stroke-dasharray: none;
+            stroke-dashoffset: 0;
+          }
+          .pi-fill {
+            opacity: 1;
           }
         }
       `}</style>
