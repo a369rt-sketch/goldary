@@ -12,9 +12,37 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const SEO_DESCRIPTION =
+  "تابع أسعار الذهب في العراق لحظة بلحظة — سعر غرام ومثقال عيار 21 مع تحديث مستمر وحركة السوق.";
+
 export const metadata: Metadata = {
-  title: "Goldary",
-  description: "أسعار الذهب الحية في العراق",
+  metadataBase: new URL("https://goldary.vercel.app"),
+  title: {
+    default: "Goldary — أسعار الذهب في العراق",
+    template: "%s | Goldary",
+  },
+  description: SEO_DESCRIPTION,
+  keywords: [
+    "أسعار الذهب في العراق",
+    "سعر الذهب اليوم",
+    "ذهب عيار 21",
+    "سعر المثقال",
+    "Goldary",
+  ],
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "ar_IQ",
+    siteName: "Goldary",
+    title: "Goldary — أسعار الذهب في العراق",
+    description: SEO_DESCRIPTION,
+    url: "https://goldary.vercel.app",
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
   appleWebApp: {
     capable: true,
     title: "Goldary",
