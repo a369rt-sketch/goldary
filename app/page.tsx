@@ -38,10 +38,10 @@ export default function Home() {
       </div>
 
       <h1>GOLDARY</h1>
-      <p className="muted">Curated by Ella Jewels</p>
+      <p className="muted">Curated by Alaa Raheem</p>
 
       <p className="lead">
-        Timeless gold pieces, carefully curated for elegance, meaning, and modern taste.
+        مرجعك الموثوق لأسعار الذهب وحركة السوق في العراق
       </p>
 
       <div className="actions">
