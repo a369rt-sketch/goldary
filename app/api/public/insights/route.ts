@@ -20,13 +20,14 @@ export async function GET() {
     // ---- gram_prices: السعر الحي 21K + آخر تحديث + Live ----
     const { data: lastGram } = await supabase
       .from("gram_prices")
-      .select("buy_gram_iqd, sell_gram_iqd, recorded_at")
+      .select("buy_gram_iqd, sell_gram_iqd, ounce_usd, recorded_at")
       .order("recorded_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
     const buyGram = lastGram?.buy_gram_iqd != null ? Number(lastGram.buy_gram_iqd) : null;
     const sellGram = lastGram?.sell_gram_iqd != null ? Number(lastGram.sell_gram_iqd) : null;
+    const ounceUsd = lastGram?.ounce_usd != null ? Number(lastGram.ounce_usd) : null;
     const lastUpdate = lastGram?.recorded_at ?? null;
     const minutesSince = lastUpdate
       ? (now - new Date(lastUpdate).getTime()) / 60000
@@ -87,6 +88,7 @@ export async function GET() {
     return NextResponse.json({
       buyGram,
       sellGram,
+      ounceUsd,
       priceSeries,
       marketMovement,
       provinceRanking,

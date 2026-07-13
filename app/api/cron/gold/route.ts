@@ -89,6 +89,7 @@ export async function GET(req: Request) {
     sell_gram_iqd: Math.round(sell_gram_iqd),
     usd_to_iqd: usd,
     numra: numra,
+    ounce_usd: ounceUsd,
     recorded_at: new Date().toISOString(),
   });
 

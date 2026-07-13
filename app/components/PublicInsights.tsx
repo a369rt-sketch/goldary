@@ -8,6 +8,7 @@ type ProvinceRank = { province: string; pct: number };
 type Insights = {
   buyGram: number | null;
   sellGram: number | null;
+  ounceUsd: number | null;
   priceSeries: number[];
   marketMovement: number | null;
   provinceRanking: ProvinceRank[];
@@ -20,7 +21,8 @@ type Insights = {
 const provinceName = (key: string) =>
   provinces.find((p) => p.key === key)?.name ?? key;
 
-const fmtIqd = (n: number) => `${Math.round(n).toLocaleString("en-US")} د.ع`;
+const fmtUsd = (n: number) =>
+  `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 // وقت نسبي حيّ: "قبل X دقيقة/ساعة/يوم"
 const relativeTime = (iso: string | null, now: number): string => {
@@ -57,7 +59,7 @@ export default function PublicInsights() {
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(() => Date.now());
   const [flash, setFlash] = useState(false);
-  const prevPrice = useRef<{ buy: number | null; sell: number | null } | null>(null);
+  const prevPrice = useRef<{ ounce: number | null } | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -86,17 +88,17 @@ export default function PublicInsights() {
     return () => clearInterval(id);
   }, []);
 
-  // وميض ذهبي خفيف عند تغيّر السعر (بلا وميض عند أول تحميل)
+  // وميض ذهبي خفيف عند تغيّر سعر الأونصة (بلا وميض عند أول تحميل)
   useEffect(() => {
     if (!data) return;
     const prev = prevPrice.current;
-    if (prev && (prev.buy !== data.buyGram || prev.sell !== data.sellGram)) {
+    if (prev && prev.ounce !== data.ounceUsd) {
       setFlash(true);
       const id = setTimeout(() => setFlash(false), 600);
-      prevPrice.current = { buy: data.buyGram, sell: data.sellGram };
+      prevPrice.current = { ounce: data.ounceUsd };
       return () => clearTimeout(id);
     }
-    prevPrice.current = { buy: data.buyGram, sell: data.sellGram };
+    prevPrice.current = { ounce: data.ounceUsd };
   }, [data]);
 
   const hasSeries = !!data && Array.isArray(data.priceSeries) && data.priceSeries.length >= 2;
@@ -131,21 +133,15 @@ export default function PublicInsights() {
         </div>
       ) : (
         <div className="pi-grid">
-          {/* سعر الغرام الحي */}
+          {/* الأونصة العالمية XAU/USD */}
           <div className="pi-card">
-            <div className="pi-title">سعر غرام 21K الحي</div>
-            {data.sellGram || data.buyGram ? (
+            <div className="pi-title">الأونصة العالمية (XAU/USD)</div>
+            {data.ounceUsd ? (
               <div className="pi-priceRow">
                 <div>
-                  <span className="pi-lbl">بيع</span>
+                  <span className="pi-lbl">سعر الأونصة</span>
                   <b className={`pi-gold ${flash ? "flash" : ""}`}>
-                    {data.sellGram ? fmtIqd(data.sellGram) : "—"}
-                  </b>
-                </div>
-                <div>
-                  <span className="pi-lbl">شراء</span>
-                  <b className={`pi-gold ${flash ? "flash" : ""}`}>
-                    {data.buyGram ? fmtIqd(data.buyGram) : "—"}
+                    {fmtUsd(data.ounceUsd)}
                   </b>
                 </div>
               </div>
