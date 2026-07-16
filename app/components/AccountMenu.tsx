@@ -119,7 +119,7 @@ export default function AccountMenu() {
           position: fixed;
           top: 14px;
           left: 14px;
-          z-index: 1000;
+          z-index: 4000;
         }
         .acct-btn {
           width: 42px;
@@ -149,11 +149,12 @@ export default function AccountMenu() {
           min-width: 170px;
           padding: 6px;
           border-radius: 14px;
-          background: rgba(17, 17, 17, 0.97);
+          background: #111111;
           border: 1px solid rgba(215, 180, 90, 0.35);
-          box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+          box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
           display: grid;
           gap: 2px;
+          z-index: 4001;
         }
         .acct-item {
           display: block;

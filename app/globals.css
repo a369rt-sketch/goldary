@@ -491,6 +491,27 @@ button {
   align-items:center;
 }
 
+/* أزرار العملة — هوية داكنة/ذهبية */
+.pill{
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(215,180,90,0.55);
+  background: rgba(255,255,255,0.04);
+  color: var(--gold2);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.pill:hover{
+  background: rgba(215,180,90,0.12);
+}
+.pill.active{
+  background: linear-gradient(135deg, #f2d27b, #d7b45a);
+  border-color: transparent;
+  color: #111;
+}
+
 .currency-toggle{
   display:flex;
   gap:8px;

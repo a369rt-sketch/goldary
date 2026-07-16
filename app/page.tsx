@@ -1,21 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import GoldTicker from "./components/GoldTicker";
 import PriceCalculator from "./components/PriceCalculator";
 import PublicInsights from "./components/PublicInsights";
 import ShopsPreview from "./components/ShopsPreview";
+import { supabase } from "./lib/supabaseClient";
 
 export default function Home() {
   const [isOpen, setIsOpen] = useState(false);
   const [currency, setCurrency] = useState<"USD" | "IQD">("USD");
+  const [loggedIn, setLoggedIn] = useState(false);
+
+  // حالة تسجيل الدخول — رابط "دخول الصاغة" يظهر لغير المسجّل فقط
+  useEffect(() => {
+    supabase.auth
+      .getUser()
+      .then((res: { data: { user: { id?: string } | null } }) =>
+        setLoggedIn(!!res.data.user)
+      );
+
+    const { data: sub } = supabase.auth.onAuthStateChange(
+      (_event: string, session: { user?: { id?: string } } | null) =>
+        setLoggedIn(!!session?.user)
+    );
+
+    return () => sub.subscription.unsubscribe();
+  }, []);
 
   return (
     <main className="container">
-      {/* شريط علوي صغير فوق اللايف */}
-      <div className="topbar">
-        <a href="/owner/login" className="topbar-link">دخول الصاغة</a>
-      </div>
+      {/* شريط علوي صغير فوق اللايف — لغير المسجّل فقط */}
+      {!loggedIn && (
+        <div className="topbar">
+          <a href="/owner/login" className="topbar-link">دخول الصاغة</a>
+        </div>
+      )}
 
       <GoldTicker currency={currency} />
 
