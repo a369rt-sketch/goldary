@@ -9,7 +9,7 @@ import { supabase } from "./lib/supabaseClient";
 
 export default function Home() {
   const [isOpen, setIsOpen] = useState(false);
-  const [currency, setCurrency] = useState<"USD" | "IQD">("USD");
+  const [currency, setCurrency] = useState<"USD" | "IQD">("IQD");
   const [loggedIn, setLoggedIn] = useState(false);
 
   // حالة تسجيل الدخول — رابط "دخول الصاغة" يظهر لغير المسجّل فقط
