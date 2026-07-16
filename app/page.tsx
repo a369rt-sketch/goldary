@@ -30,12 +30,14 @@ export default function Home() {
 
   return (
     <main className="container">
-      {/* شريط علوي صغير فوق اللايف — لغير المسجّل فقط */}
-      {!loggedIn && (
-        <div className="topbar">
+      {/* شريط علوي صغير فوق اللايف */}
+      <div className="topbar" style={{ gap: 10 }}>
+        <a href="/magazine" className="topbar-link">المجلة</a>
+        {/* "دخول الصاغة" لغير المسجّل فقط */}
+        {!loggedIn && (
           <a href="/owner/login" className="topbar-link">دخول الصاغة</a>
-        </div>
-      )}
+        )}
+      </div>
 
       <GoldTicker currency={currency} />
 
