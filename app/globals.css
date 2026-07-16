@@ -512,6 +512,14 @@ button {
   color: #111;
 }
 
+/* سطر تنويه نطاق البيع في الـticker */
+.ticker-note{
+  flex-basis: 100%;
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+  text-align: center;
+}
+
 .currency-toggle{
   display:flex;
   gap:8px;
