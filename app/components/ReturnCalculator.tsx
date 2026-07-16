@@ -1,12 +1,21 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { type GoldData, fmt } from "@/app/lib/goldPricing";
+import { fmt } from "@/app/lib/goldPricing";
+import { getLatestGramPrice } from "@/app/lib/gramPrices";
 
 type Karat = "24K" | "22K" | "21K" | "18K";
 
+const KARAT_NUM: Record<Karat, number> = {
+  "24K": 24,
+  "22K": 22,
+  "21K": 21,
+  "18K": 18,
+};
+
 export default function ReturnCalculator() {
-  const [data, setData] = useState<GoldData | null>(null);
+  // سعر شراء الغرام 21K الحي من gram_prices (السعر الحقيقي الوحيد)
+  const [buy21, setBuy21] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
 
@@ -15,21 +24,21 @@ export default function ReturnCalculator() {
   const [purchasePrice, setPurchasePrice] = useState<number>(0);
   const [purchaseDate, setPurchaseDate] = useState<string>("");
 
-  // جلب السعر الحالي من api/gold (نفس نمط GoldTicker)
+  // جلب سعر الشراء 21K الحي (نفس مصدر بطاقة LIVE)
   useEffect(() => {
     let mounted = true;
 
     async function load() {
       try {
-        const res = await fetch("/api/gold", { cache: "no-store" });
-        const json = await res.json();
+        const gram = await getLatestGramPrice();
         if (!mounted) return;
-        if (json?.error) {
+        const buy = Number(gram?.buy_gram_iqd);
+        if (!gram || !Number.isFinite(buy) || buy <= 0) {
           setFailed(true);
           setLoading(false);
           return;
         }
-        setData(json as GoldData);
+        setBuy21(buy);
         setLoading(false);
       } catch (err) {
         if (!mounted) return;
@@ -46,15 +55,15 @@ export default function ReturnCalculator() {
     };
   }, []);
 
-  // السعر الحالي للغرام بالدينار حسب العيار (18K مشتق من 24K × 18/24)
+  // 21K = السعر الحقيقي؛ باقي العيارات تُشتق بنسب النقاء (base24 = buy21 / 0.875)
   const currentGramPrice = useMemo(() => {
-    if (!data) return 0;
-    const g24 = Number(data.price_gram_24k ?? 0);
-    if (karat === "24K") return g24;
-    if (karat === "22K") return Number(data.price_gram_22k ?? 0);
-    if (karat === "21K") return Number(data.price_gram_21k ?? 0);
-    return Math.round(g24 * (18 / 24)); // 18K
-  }, [data, karat]);
+    if (buy21 == null) return 0;
+    if (karat === "21K") return buy21;
+    const base24 = buy21 / 0.875;
+    return Math.round(base24 * (KARAT_NUM[karat] / 24));
+  }, [buy21, karat]);
+
+  const isApprox = karat !== "21K"; // العيارات المشتقة تحتاج وسماً صريحاً
 
   const result = useMemo(() => {
     const totalCost = grams * purchasePrice;
@@ -134,11 +143,29 @@ export default function ReturnCalculator() {
         </div>
 
         <div className="tiny muted">
-          {loading
-            ? "جارٍ تحميل السعر الحالي…"
-            : failed
-            ? "تعذّر جلب السعر الحالي، حاول لاحقاً"
-            : `السعر الحالي للغرام (${karat}): ${fmt(currentGramPrice, "IQD")}`}
+          {loading ? (
+            "جارٍ تحميل السعر الحالي…"
+          ) : failed ? (
+            <span>السعر الحالي للغرام: — · تعذر جلب السعر الحالي</span>
+          ) : (
+            <>
+              السعر الحالي للغرام ({karat}): {fmt(currentGramPrice, "IQD")}
+              {isApprox && (
+                <span
+                  style={{
+                    marginInlineStart: 8,
+                    padding: "2px 8px",
+                    borderRadius: 999,
+                    border: "1px solid rgba(215,180,90,0.5)",
+                    color: "var(--gold2)",
+                    fontSize: 11,
+                  }}
+                >
+                  تقريبي — محوّل من عيار 21
+                </span>
+              )}
+            </>
+          )}
         </div>
 
         <div className="panel" style={{ display: "grid", gap: 8 }}>
