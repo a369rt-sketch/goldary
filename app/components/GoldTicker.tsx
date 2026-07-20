@@ -15,12 +15,9 @@ const fmtMoney = (n: number, currency: Currency) =>
     ? `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     : `${Math.round(n).toLocaleString("en-US")} د.ع`;
 
-const DEFAULT_SPREAD = 5000; // fallback لو تعذّر جلب sell_spread_iqd
-
 export default function GoldTicker({ currency }: Props) {
   const [buyGram, setBuyGram] = useState<number | null>(null);
   const [sellGram, setSellGram] = useState<number | null>(null);
-  const [sellSpread, setSellSpread] = useState<number>(DEFAULT_SPREAD);
   const [usdToIqd, setUsdToIqd] = useState<number>(0);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
@@ -28,17 +25,11 @@ export default function GoldTicker({ currency }: Props) {
     let alive = true;
 
     const load = async () => {
-      const [gram, dollar, spread] = await Promise.all([
+      const [gram, dollar] = await Promise.all([
         getLatestGramPrice(),
         supabase
           .from("dollar_rate")
           .select("usd_to_iqd, recorded_at")
-          .order("recorded_at", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-        supabase
-          .from("numra_rate")
-          .select("sell_spread_iqd, recorded_at")
           .order("recorded_at", { ascending: false })
           .limit(1)
           .maybeSingle(),
@@ -53,8 +44,6 @@ export default function GoldTicker({ currency }: Props) {
       if (dollar.data?.usd_to_iqd != null) {
         setUsdToIqd(Number(dollar.data.usd_to_iqd) || 0);
       }
-      const sp = Number(spread.data?.sell_spread_iqd);
-      setSellSpread(Number.isFinite(sp) && sp >= 0 ? sp : DEFAULT_SPREAD);
       setUpdatedAt(new Date());
     };
 
@@ -67,25 +56,19 @@ export default function GoldTicker({ currency }: Props) {
     };
   }, []);
 
-  // العرض بالعملة المختارة — الأسعار مخزّنة بالدينار، وللدولار نقسّم على سعر الصرف
-  // X = سعر البيع الأساس، Y = X + spread (نطاق البيع). الشراء رقم واحد.
+  // العرض بالعملة المختارة — الأسعار مخزّنة بالدينار، وللدولار نقسّم على سعر الصرف.
+  // البيع والشراء رقم واحد لكلٍّ (sell_gram_iqd مباشرة من المعادلة).
+  // ملاحظة: عمود sell_spread_iqd يبقى في القاعدة لاستخدام مستقبلي، ولا يُستعمل في العرض حالياً.
   const prices = useMemo(() => {
     if (buyGram == null || sellGram == null) return null;
 
-    const sellLow = sellGram;
-    const sellHigh = sellGram + sellSpread;
-
     if (currency === "USD") {
       if (!usdToIqd) return null;
-      return {
-        buy: buyGram / usdToIqd,
-        sellLow: sellLow / usdToIqd,
-        sellHigh: sellHigh / usdToIqd,
-      };
+      return { buy: buyGram / usdToIqd, sell: sellGram / usdToIqd };
     }
 
-    return { buy: buyGram, sellLow, sellHigh };
-  }, [buyGram, sellGram, sellSpread, currency, usdToIqd]);
+    return { buy: buyGram, sell: sellGram };
+  }, [buyGram, sellGram, currency, usdToIqd]);
 
   const timeText = updatedAt
     ? updatedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
@@ -104,12 +87,7 @@ export default function GoldTicker({ currency }: Props) {
         {prices ? (
           <>
             <span>شراء 21K: {fmtMoney(prices.buy, currency)}</span>
-            <span>
-              بيع 21K: {fmtMoney(prices.sellLow, currency)} – {fmtMoney(prices.sellHigh, currency)}
-            </span>
-            <span className="ticker-note">
-              البيع يختلف بين المحلات حسب المصنعية والموديل
-            </span>
+            <span>بيع 21K: {fmtMoney(prices.sell, currency)}</span>
           </>
         ) : (
           <span style={{ opacity: 0.7 }}>Loading...</span>
