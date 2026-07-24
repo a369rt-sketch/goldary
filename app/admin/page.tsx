@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Home,
@@ -145,20 +145,31 @@ const months =
               [FileText, "Reports"],
               [Settings, "Settings"],
               [Users, "Users"],
-            ].map(([Icon, text, active]: any) => (
-              <div className={`navItem ${active ? "active" : ""}`} key={text}>
-                <Icon size={20} />
-                <span>{text}</span>
-              </div>
-            ))}
-            <Link
-              href="/admin/shops"
-              className="navItem"
-              style={{ textDecoration: "none" }}
-            >
-              <Store size={20} />
-              <span>المحلات (طلبات الموافقة)</span>
-            </Link>
+            ].map(([Icon, text, active]: any) => {
+              const item = (
+                <div className={`navItem ${active ? "active" : ""}`} key={text}>
+                  <Icon size={20} />
+                  <span>{text}</span>
+                </div>
+              );
+              // رابط المحلات مباشرة بعد Dashboard (أعلى القائمة، بعيداً عن تغطية .system)
+              if (text === "Dashboard") {
+                return (
+                  <Fragment key={text}>
+                    {item}
+                    <Link
+                      href="/admin/shops"
+                      className="navItem"
+                      style={{ textDecoration: "none" }}
+                    >
+                      <Store size={20} />
+                      <span>المحلات (طلبات الموافقة)</span>
+                    </Link>
+                  </Fragment>
+                );
+              }
+              return item;
+            })}
           </nav>
           <div className="system">
             <div>
