@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   Home,
   Coins,
@@ -17,6 +18,7 @@ import {
   Diamond,
   PieChart,
   Activity,
+  Store,
 } from "lucide-react";
 
 
@@ -149,6 +151,14 @@ const months =
                 <span>{text}</span>
               </div>
             ))}
+            <Link
+              href="/admin/shops"
+              className="navItem"
+              style={{ textDecoration: "none" }}
+            >
+              <Store size={20} />
+              <span>المحلات (طلبات الموافقة)</span>
+            </Link>
           </nav>
           <div className="system">
             <div>
