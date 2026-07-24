@@ -34,8 +34,15 @@ const emptyInputs = (): Record<ShopKarat, string> => ({
 const BUCKET = "shop-images";
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
 
-// نوع المحل مع مصفوفة صور المعرض (غير موجودة بنوع Shop الأساسي)
-type ShopRow = Shop & { gallery_urls: string[] | null; karats: string[] | null };
+// حالة المحل (نفس قيم لوحة الأدمن)
+type ShopStatus = "pending" | "approved" | "rejected" | "hidden";
+
+// نوع المحل مع مصفوفة صور المعرض + الحالة (غير موجودة بنوع Shop الأساسي)
+type ShopRow = Shop & {
+  gallery_urls: string[] | null;
+  karats: string[] | null;
+  status: ShopStatus | null;
+};
 
 // تحقّق: صورة فقط وحجم معقول
 function validateImage(file: File): string | null {
@@ -76,6 +83,10 @@ export default function DashboardPage() {
   const [infoMsg, setInfoMsg] = useState("");
   const [infoErr, setInfoErr] = useState("");
 
+  // فورم تسجيل محل جديد
+  const [registering, setRegistering] = useState(false);
+  const [regErr, setRegErr] = useState("");
+
   // نموذج الأسعار
   const [latest, setLatest] = useState<Record<ShopKarat, number | null>>(
     pricesByKarat([])
@@ -114,6 +125,61 @@ export default function DashboardPage() {
     setLatest(pricesByKarat((data ?? []) as ShopPrice[]));
   }
 
+  // جلب محل المالك (يُستعمل عند الإقلاع وبعد إرسال الطلب)
+  async function loadShop(uid: string) {
+    const { data: shopRow } = await supabase
+      .from("shops")
+      .select("*")
+      .eq("owner_id", uid)
+      .maybeSingle();
+
+    if (shopRow) {
+      const s = shopRow as ShopRow;
+      setShop(s);
+      setName(s.name ?? "");
+      setProvince(s.province ?? "");
+      setPhone(s.phone ?? "");
+      setWhatsapp(s.whatsapp ?? "");
+      setAddress(s.address ?? "");
+      setSelectedKarats(s.karats ?? []);
+      await loadPrices(s.id);
+    } else {
+      setShop(null);
+    }
+  }
+
+  // إرسال طلب تسجيل محل جديد — status ثابت 'pending' بالكود (لا من إدخال المستخدم)
+  async function submitRegistration(e: React.FormEvent) {
+    e.preventDefault();
+    setRegErr("");
+
+    if (!userId) return;
+    if (!name.trim() || !province) {
+      setRegErr("اسم المحل والمحافظة مطلوبان");
+      return;
+    }
+
+    setRegistering(true);
+    const { error } = await supabase.from("shops").insert({
+      owner_id: userId,
+      name: name.trim(),
+      province,
+      phone: phone.trim() || null,
+      whatsapp: whatsapp.trim() || null,
+      address: address.trim() || null,
+      status: "pending",
+    });
+    setRegistering(false);
+
+    if (error) {
+      setRegErr(`تعذّر إرسال الطلب: ${error.message}`);
+      return;
+    }
+
+    // أعد الجلب لإظهار حالة "قيد المراجعة"
+    await loadShop(userId);
+  }
+
   // التحقق من الجلسة + جلب محل المستخدم
   useEffect(() => {
     let mounted = true;
@@ -128,27 +194,9 @@ export default function DashboardPage() {
       }
 
       setUserId(auth.user.id);
-
-      const { data: shopRow } = await supabase
-        .from("shops")
-        .select("*")
-        .eq("owner_id", auth.user.id)
-        .maybeSingle();
+      await loadShop(auth.user.id);
 
       if (!mounted) return;
-
-      if (shopRow) {
-        const s = shopRow as ShopRow;
-        setShop(s);
-        setName(s.name ?? "");
-        setProvince(s.province ?? "");
-        setPhone(s.phone ?? "");
-        setWhatsapp(s.whatsapp ?? "");
-        setAddress(s.address ?? "");
-        setSelectedKarats(s.karats ?? []);
-        await loadPrices(s.id);
-      }
-
       setLoading(false);
     }
 
@@ -441,14 +489,106 @@ export default function DashboardPage() {
       </div>
 
       {!shop ? (
+        /* 1) لا يوجد محل — فورم تسجيل محل جديد (الطلب يُنشأ بحالة pending) */
+        <form
+          className="card"
+          style={{ maxWidth: 520 }}
+          onSubmit={submitRegistration}
+        >
+          <div className="card-title" style={{ marginBottom: 6 }}>سجّل محلك</div>
+          <p className="muted small" style={{ marginTop: 0, marginBottom: 12 }}>
+            أرسل طلب تسجيل محلك؛ يظهر في الدليل العام بعد موافقة الإدارة.
+          </p>
+
+          <label className="label" htmlFor="reg-name">اسم المحل *</label>
+          <input
+            id="reg-name"
+            className="input"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            style={{ width: "100%" }}
+          />
+
+          <label className="label" htmlFor="reg-province" style={{ marginTop: 12 }}>
+            المحافظة *
+          </label>
+          <select
+            id="reg-province"
+            className="input"
+            value={province}
+            onChange={(e) => setProvince(e.target.value)}
+            style={{ width: "100%" }}
+          >
+            <option value="">اختر المحافظة</option>
+            {provinces.map((p) => (
+              <option key={p.key} value={p.key}>{p.name}</option>
+            ))}
+          </select>
+
+          <label className="label" htmlFor="reg-phone" style={{ marginTop: 12 }}>
+            الهاتف
+          </label>
+          <input
+            id="reg-phone"
+            className="input"
+            dir="ltr"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            style={{ width: "100%" }}
+          />
+
+          <label className="label" htmlFor="reg-whatsapp" style={{ marginTop: 12 }}>
+            واتساب
+          </label>
+          <input
+            id="reg-whatsapp"
+            className="input"
+            dir="ltr"
+            value={whatsapp}
+            onChange={(e) => setWhatsapp(e.target.value)}
+            style={{ width: "100%" }}
+          />
+
+          <label className="label" htmlFor="reg-address" style={{ marginTop: 12 }}>
+            العنوان
+          </label>
+          <input
+            id="reg-address"
+            className="input"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            style={{ width: "100%" }}
+          />
+
+          {regErr && <p className="error" style={{ marginTop: 12 }}>{regErr}</p>}
+
+          <button
+            type="submit"
+            className="btn-primary"
+            disabled={registering}
+            style={{ marginTop: 16, width: "100%" }}
+          >
+            {registering ? "جارٍ الإرسال…" : "إرسال الطلب"}
+          </button>
+        </form>
+      ) : shop.status === "pending" ? (
+        /* 2) قيد المراجعة */
         <div className="card" style={{ maxWidth: 520 }}>
-          <div className="card-title">لا يوجد محل مرتبط بحسابك بعد</div>
+          <div className="card-title">محلك قيد المراجعة من الإدارة</div>
           <p className="muted" style={{ marginTop: 6 }}>
-            إذا قدّمت طلب انضمام، فهو قيد المراجعة من الإدارة وسيظهر محلك هنا فور الموافقة.
-            وإلا تواصل مع الإدارة لربط محلك بحسابك حتى تتمكن من إدارته.
+            سيظهر محلك في الدليل العام فور الموافقة.
+          </p>
+        </div>
+      ) : shop.status === "rejected" ? (
+        /* 4) مرفوض */
+        <div className="card" style={{ maxWidth: 520 }}>
+          <div className="card-title">تم رفض الطلب</div>
+          <p className="muted" style={{ marginTop: 6 }}>
+            تواصل مع الإدارة لمزيد من المعلومات.
           </p>
         </div>
       ) : (
+        /* 3) معتمد (وأي حالة أخرى مثل hidden/legacy) — واجهة إدارة المحل */
         <>
           {/* معلومات المحل */}
           <form className="card" style={{ maxWidth: 520 }} onSubmit={saveInfo}>
