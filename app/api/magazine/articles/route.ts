@@ -6,13 +6,25 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// توليد slug من النص — يدعم العربي واللاتيني، ويزيل التشكيل والرموز.
+// خريطة الترجمة الصوتية عربي→لاتيني — روابط ASCII تعمل على توجيه Next/Vercel،
+// بخلاف الـslug العربي المُرمَّز الذي يفشل في المطابقة (404).
+const AR_TO_LATIN: Record<string, string> = {
+  ا: 'a', أ: 'a', إ: 'i', آ: 'a', ٱ: 'a', ب: 'b', ت: 't', ث: 'th', ج: 'j',
+  ح: 'h', خ: 'kh', د: 'd', ذ: 'dh', ر: 'r', ز: 'z', س: 's', ش: 'sh', ص: 's',
+  ض: 'd', ط: 't', ظ: 'z', ع: 'a', غ: 'gh', ف: 'f', ق: 'q', ك: 'k', ل: 'l',
+  م: 'm', ن: 'n', ه: 'h', و: 'w', ي: 'y', ى: 'a', ة: 'h', ء: '', ئ: 'y', ؤ: 'w',
+  '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4', '٥': '5',
+  '٦': '6', '٧': '7', '٨': '8', '٩': '9',
+};
+
+// توليد slug لاتيني (ASCII) — يترجم العربي صوتياً ويزيل الرموز والتشكيل.
 function slugify(input: string): string {
-  return input
-    .normalize('NFKD')
-    .replace(/[ً-ٰٟ]/g, '') // إزالة التشكيل العربي
+  const transliterated = Array.from(input)
+    .map((ch) => (ch in AR_TO_LATIN ? AR_TO_LATIN[ch] : ch))
+    .join('');
+  return transliterated
     .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s-]/gu, '') // إبقاء الحروف (بما فيها العربية) والأرقام والمسافات والشرطة
+    .replace(/[^a-z0-9\s-]/g, '') // ASCII فقط
     .trim()
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
