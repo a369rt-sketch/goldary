@@ -8,6 +8,7 @@ import {
   type Article,
   type ArticleCategory,
 } from "@/app/lib/articles";
+import ArticleEditor from "./ArticleEditor";
 
 type Tab = "all" | ArticleCategory;
 
@@ -49,7 +50,10 @@ export default function MagazinePage() {
           <h1 className="title">مجلة Goldary</h1>
           <p className="muted">أخبار وتحليلات الذهب والسوق في العراق</p>
         </div>
-        <a href="/" className="btn-secondary">الرئيسية</a>
+        <div className="row" style={{ gap: 8 }}>
+          <a href="/magazine/my-articles" className="btn-secondary">مقالاتي</a>
+          <a href="/" className="btn-secondary">الرئيسية</a>
+        </div>
       </div>
 
       {/* تبويبات الأقسام */}
@@ -140,6 +144,8 @@ export default function MagazinePage() {
           border-radius: 999px;
         }
       `}</style>
+
+      <ArticleEditor />
     </main>
   );
 }

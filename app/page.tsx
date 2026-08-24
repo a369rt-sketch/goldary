@@ -1,44 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import GoldTicker from "./components/GoldTicker";
-import PriceCalculator from "./components/PriceCalculator";
 import PublicInsights from "./components/PublicInsights";
 import ShopsPreview from "./components/ShopsPreview";
-import { supabase } from "./lib/supabaseClient";
+import { useCurrency } from "./lib/currency";
 
 export default function Home() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [currency, setCurrency] = useState<"USD" | "IQD">("IQD");
-  const [loggedIn, setLoggedIn] = useState(false);
-
-  // حالة تسجيل الدخول — رابط "دخول الصاغة" يظهر لغير المسجّل فقط
-  useEffect(() => {
-    supabase.auth
-      .getUser()
-      .then((res: { data: { user: { id?: string } | null } }) =>
-        setLoggedIn(!!res.data.user)
-      );
-
-    const { data: sub } = supabase.auth.onAuthStateChange(
-      (_event: string, session: { user?: { id?: string } } | null) =>
-        setLoggedIn(!!session?.user)
-    );
-
-    return () => sub.subscription.unsubscribe();
-  }, []);
+  // العملة مشتركة مع مبدّل الـHeader (localStorage + event)
+  const [currency, setCurrency] = useCurrency();
 
   return (
     <main className="container">
-      {/* شريط علوي صغير فوق اللايف */}
-      <div className="topbar" style={{ gap: 10 }}>
-        <a href="/magazine" className="topbar-link">المجلة</a>
-        {/* "دخول الصاغة" لغير المسجّل فقط */}
-        {!loggedIn && (
-          <a href="/owner/login" className="topbar-link">دخول الصاغة</a>
-        )}
-      </div>
-
       <GoldTicker currency={currency} />
 
       <div className="currency-row">
@@ -65,23 +37,6 @@ export default function Home() {
       <p className="lead">
         مرجعك الموثوق لأسعار الذهب وحركة السوق في العراق
       </p>
-
-      <div className="actions">
-        <button type="button" className="btn-primary" onClick={() => setIsOpen(true)}>
-          Calculate Price Now
-        </button>
-
-        <a href="/return-calculator" className="btn-secondary">
-          Investment Calculator
-        </a>
-      </div>
-
-      {isOpen ? (
-        <PriceCalculator
-          currency={currency}
-          onClose={() => setIsOpen(false)}
-        />
-      ) : null}
 
       <ShopsPreview />
 
