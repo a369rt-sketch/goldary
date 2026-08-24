@@ -6,6 +6,28 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// توليد slug من النص — يدعم العربي واللاتيني، ويزيل التشكيل والرموز.
+function slugify(input: string): string {
+  return input
+    .normalize('NFKD')
+    .replace(/[ً-ٰٟ]/g, '') // إزالة التشكيل العربي
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s-]/gu, '') // إبقاء الحروف (بما فيها العربية) والأرقام والمسافات والشرطة
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+// slug نهائي: يستخدم المُدخَل إن وُجد، وإلا يُشتق من العنوان، مع بديل آمن عند الفراغ.
+function makeSlug(provided: string | undefined | null, title: string): string {
+  const fromProvided = provided ? slugify(provided) : '';
+  if (fromProvided) return fromProvided;
+  const fromTitle = slugify(title);
+  if (fromTitle) return fromTitle;
+  return `article-${Date.now().toString(36)}`;
+}
+
 // GET — كل المقالات (مسودات + منشورة) لصفحة "مقالاتي".
 // يستخدم service role فيتجاوز RLS الذي يمنع anon من رؤية المسودات.
 export async function GET() {
@@ -61,7 +83,7 @@ export async function POST(request: NextRequest) {
       .insert([
         {
           title,
-          slug: slug || title.toLowerCase().replace(/\s+/g, '-'),
+          slug: makeSlug(slug, title),
           excerpt,
           content,
           category,
@@ -141,7 +163,7 @@ export async function PUT(request: NextRequest) {
       .from('articles')
       .update({
         title,
-        slug: slug || title.toLowerCase().replace(/\s+/g, '-'),
+        slug: makeSlug(slug, title),
         excerpt,
         content,
         category,
