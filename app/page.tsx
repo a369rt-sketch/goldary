@@ -1,6 +1,7 @@
 "use client";
 
 import GoldTicker from "./components/GoldTicker";
+import Hero from "./components/Hero";
 import PublicInsights from "./components/PublicInsights";
 import ShopsPreview from "./components/ShopsPreview";
 import { useCurrency } from "./lib/currency";
@@ -31,12 +32,7 @@ export default function Home() {
         </button>
       </div>
 
-      <h1>GOLDARY</h1>
-      <p className="muted">Curated by Alaa Raheem</p>
-
-      <p className="lead">
-        مرجعك الموثوق لأسعار الذهب وحركة السوق في العراق
-      </p>
+      <Hero />
 
       <ShopsPreview />
 
