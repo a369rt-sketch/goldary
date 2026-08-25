@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useT } from "@/app/lib/i18n";
 
 type P = { x: number; y: number; r: number; vx: number; vy: number; a: number };
 
 // قسم البطل: حقل جزيئات ذهبية + توهّج نابض + عنوان متحرّك — بثيم Goldary (ذهبي/أسود).
 export default function Hero() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { t } = useT();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -111,10 +113,8 @@ export default function Hero() {
 
       <div className="hero-content">
         <h1 className="hero-title">GOLDARY</h1>
-        <p className="hero-sub">Curated by Alaa Raheem</p>
-        <p className="hero-lead">
-          مرجعك الموثوق لأسعار الذهب وحركة السوق في العراق
-        </p>
+        <p className="hero-sub">{t.curated_by}</p>
+        <p className="hero-lead">{t.hero_tagline}</p>
       </div>
 
       <style jsx>{`

@@ -1,27 +1,28 @@
 "use client";
 
-const QUICK_LINKS = [
-  { href: "/", label: "الأسعار الحالية" },
-  { href: "/magazine", label: "المجلة" },
-  { href: "/shops", label: "المحلات" },
-];
+import { useT } from "@/app/lib/i18n";
 
 export default function SiteFooter() {
+  const { t } = useT();
+
+  const QUICK_LINKS = [
+    { href: "/", label: t.nav_prices },
+    { href: "/magazine", label: t.nav_magazine },
+    { href: "/shops", label: t.nav_shops },
+  ];
+
   return (
-    <footer className="ftr" dir="rtl">
+    <footer className="ftr">
       <div className="ftr-inner">
         {/* نبذة */}
         <div className="ftr-col ftr-about">
           <span className="ftr-logo">Goldary</span>
-          <p className="ftr-desc">
-            مرجعك الموثوق لأسعار الذهب وحركة السوق في العراق — أسعار لحظية،
-            تحليلات، ودليل محلات الصاغة.
-          </p>
+          <p className="ftr-desc">{t.footer_desc}</p>
         </div>
 
         {/* روابط سريعة */}
         <div className="ftr-col">
-          <h4 className="ftr-title">روابط سريعة</h4>
+          <h4 className="ftr-title">{t.quick_links}</h4>
           <ul className="ftr-links">
             {QUICK_LINKS.map((l) => (
               <li key={l.href}>
@@ -31,19 +32,16 @@ export default function SiteFooter() {
           </ul>
         </div>
 
-        {/* تواصل */}
+        {/* عن التطبيق */}
         <div className="ftr-col">
-          <h4 className="ftr-title">عن التطبيق</h4>
-          <p className="ftr-desc">
-            Goldary منصّة عراقية لمتابعة أسعار الذهب لحظة بلحظة عيار 21 ومثقال،
-            مع مجلة متخصّصة ودليل للصاغة.
-          </p>
+          <h4 className="ftr-title">{t.about_app}</h4>
+          <p className="ftr-desc">{t.footer_about}</p>
         </div>
       </div>
 
       <div className="ftr-bottom">
-        <span>© 2026 Goldary. جميع الحقوق محفوظة.</span>
-        <span className="ftr-by">Curated by Alaa Raheem</span>
+        <span>{t.rights}</span>
+        <span className="ftr-by">{t.curated_by}</span>
       </div>
 
       <style jsx>{`
@@ -111,7 +109,6 @@ export default function SiteFooter() {
           color: var(--gold);
         }
 
-        /* ===== موبايل: أقل من 768px — تكديس عمودي مضغوط ===== */
         @media (max-width: 767px) {
           .ftr {
             margin-top: 40px;

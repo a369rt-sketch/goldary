@@ -4,18 +4,20 @@ import { useEffect, useMemo, useState } from "react";
 import { type Currency } from "@/app/lib/goldPricing";
 import { getLatestGramPrice } from "@/app/lib/gramPrices";
 import { supabase } from "@/app/lib/supabaseClient";
+import { useT } from "@/app/lib/i18n";
 
 type Props = {
   currency: Currency; // "USD" | "IQD"
 };
 
-// تنسيق محلي للـticker: الدينار بصيغة "… د.ع"، الدولار بـ"$"
-const fmtMoney = (n: number, currency: Currency) =>
+// تنسيق محلي للـticker: الدينار بلاحقة العملة حسب اللغة، الدولار بـ"$"
+const fmtMoney = (n: number, currency: Currency, iqdSuffix: string) =>
   currency === "USD"
     ? `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-    : `${Math.round(n).toLocaleString("en-US")} د.ع`;
+    : `${Math.round(n).toLocaleString("en-US")} ${iqdSuffix}`;
 
 export default function GoldTicker({ currency }: Props) {
+  const { t } = useT();
   const [buyGram, setBuyGram] = useState<number | null>(null);
   const [sellGram, setSellGram] = useState<number | null>(null);
   const [usdToIqd, setUsdToIqd] = useState<number>(0);
@@ -78,19 +80,19 @@ export default function GoldTicker({ currency }: Props) {
     <div className="ticker">
       <div className="ticker-left">
         <span className="live-dot" />
-        <span className="live-text">LIVE</span>
+        <span className="live-text">{t.live}</span>
       </div>
 
-      <div className="ticker-mid">Updated {timeText}</div>
+      <div className="ticker-mid">{t.updated} {timeText}</div>
 
       <div className="ticker-right">
         {prices ? (
           <>
-            <span>شراء 21K: {fmtMoney(prices.buy, currency)}</span>
-            <span>بيع 21K: {fmtMoney(prices.sell, currency)}</span>
+            <span>{t.buy21k}: {fmtMoney(prices.buy, currency, t.iqd_suffix)}</span>
+            <span>{t.sell21k}: {fmtMoney(prices.sell, currency, t.iqd_suffix)}</span>
           </>
         ) : (
-          <span style={{ opacity: 0.7 }}>Loading...</span>
+          <span style={{ opacity: 0.7 }}>{t.loading}</span>
         )}
       </div>
     </div>

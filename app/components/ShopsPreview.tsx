@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import { getShopsWithPrices, type ShopWithPrices } from "@/app/lib/shops";
 import ShopCard from "@/app/components/ShopCard";
+import { useT } from "@/app/lib/i18n";
 
 // عدد المحلات المعروضة في المعاينة
 const PREVIEW_COUNT = 4;
 
 // معاينة محلات في الصفحة الرئيسية — تعرض أول أربعة محلات مع زر لكل المحلات
 export default function ShopsPreview() {
+  const { t } = useT();
   const [shops, setShops] = useState<ShopWithPrices[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -33,10 +35,10 @@ export default function ShopsPreview() {
   if (loading || shops.length === 0) return null;
 
   return (
-    <section className="shops-preview" dir="rtl">
+    <section className="shops-preview">
       <div className="row-between">
-        <h2 className="title">محلات الذهب</h2>
-        <a href="/shops" className="btn-secondary">عرض كل المحلات</a>
+        <h2 className="title">{t.shops_heading}</h2>
+        <a href="/shops" className="btn-secondary">{t.view_all_shops}</a>
       </div>
 
       <div className="grid">

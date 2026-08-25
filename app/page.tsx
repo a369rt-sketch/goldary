@@ -5,17 +5,19 @@ import Hero from "./components/Hero";
 import PublicInsights from "./components/PublicInsights";
 import ShopsPreview from "./components/ShopsPreview";
 import { useCurrency } from "./lib/currency";
+import { useT } from "./lib/i18n";
 
 export default function Home() {
   // العملة مشتركة مع مبدّل الـHeader (localStorage + event)
   const [currency, setCurrency] = useCurrency();
+  const { t } = useT();
 
   return (
     <main className="container">
       <GoldTicker currency={currency} />
 
       <div className="currency-row">
-        <span className="label">Currency:</span>
+        <span className="label">{t.currency_label}</span>
         <button
           type="button"
           className={currency === "USD" ? "pill active" : "pill"}

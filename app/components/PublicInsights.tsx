@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { provinces } from "@/app/lib/provinces";
+import { useT, relativeTime } from "@/app/lib/i18n";
 
 type ProvinceRank = { province: string; pct: number };
 
@@ -24,20 +25,6 @@ const provinceName = (key: string) =>
 const fmtUsd = (n: number) =>
   `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-// وقت نسبي حيّ: "قبل X دقيقة/ساعة/يوم"
-const relativeTime = (iso: string | null, now: number): string => {
-  if (!iso) return "—";
-  const t = new Date(iso).getTime();
-  if (!Number.isFinite(t)) return "—";
-  const diffMin = Math.floor((now - t) / 60000);
-  if (diffMin < 1) return "قبل لحظات";
-  if (diffMin < 60) return `قبل ${diffMin} دقيقة`;
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `قبل ${diffHr} ساعة`;
-  const diffDay = Math.floor(diffHr / 24);
-  return `قبل ${diffDay} يوم`;
-};
-
 // تطبيع سلسلة أرقام إلى نقاط SVG داخل w×h مع حاشية pad
 function toPoints(series: number[], w: number, h: number, pad: number): string {
   const n = series.length;
@@ -55,6 +42,7 @@ function toPoints(series: number[], w: number, h: number, pad: number): string {
 }
 
 export default function PublicInsights() {
+  const { t, lang } = useT();
   const [data, setData] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(() => Date.now());
@@ -113,61 +101,61 @@ export default function PublicInsights() {
     : `${movePositive ? "▲ +" : "▼ −"}${Math.abs(movement as number)}%`;
 
   return (
-    <section className="pi" dir="rtl">
+    <section className="pi">
       <div className="pi-head">
         <div>
-          <h2>إحصاءات السوق</h2>
-          <p>مؤشرات الذهب الحية في العراق</p>
+          <h2>{t.pi_heading}</h2>
+          <p>{t.pi_sub}</p>
         </div>
         <span className={`pi-live ${data?.isLive ? "on" : "off"}`}>
           <i />
-          {data?.isLive ? "مباشر" : "غير محدّث"}
+          {data?.isLive ? t.pi_live : t.pi_offline}
         </span>
       </div>
 
       {loading ? (
-        <p className="pi-muted">جارٍ التحميل…</p>
+        <p className="pi-muted">{t.loading}</p>
       ) : !data ? (
         <div className="pi-card">
-          <p className="pi-muted" style={{ margin: 0 }}>لا توجد بيانات بعد</p>
+          <p className="pi-muted" style={{ margin: 0 }}>{t.pi_nodata}</p>
         </div>
       ) : (
         <div className="pi-grid">
           {/* الأونصة العالمية XAU/USD */}
           <div className="pi-card">
-            <div className="pi-title">الأونصة العالمية (XAU/USD)</div>
+            <div className="pi-title">{t.pi_ounce}</div>
             {data.ounceUsd ? (
               <div className="pi-priceRow">
                 <div>
-                  <span className="pi-lbl">سعر الأونصة</span>
+                  <span className="pi-lbl">{t.pi_ounce_price}</span>
                   <b className={`pi-gold ${flash ? "flash" : ""}`}>
                     {fmtUsd(data.ounceUsd)}
                   </b>
                 </div>
               </div>
             ) : (
-              <p className="pi-muted">لا يوجد سعر بعد</p>
+              <p className="pi-muted">{t.pi_no_price}</p>
             )}
-            <div className="pi-sub">آخر تحديث: {relativeTime(data.lastUpdate, now)}</div>
+            <div className="pi-sub">{t.pi_last_update}: {relativeTime(data.lastUpdate, now, lang)}</div>
           </div>
 
           {/* اتجاه السوق */}
           <div className="pi-card">
-            <div className="pi-title">اتجاه السوق</div>
+            <div className="pi-title">{t.pi_trend}</div>
             <div className={`pi-move ${moveColor}`}>{moveText}</div>
-            <div className="pi-sub">مقارنة آخر 30 يوم</div>
+            <div className="pi-sub">{t.pi_trend_sub}</div>
           </div>
 
           {/* العيار الأكثر طلباً */}
           <div className="pi-card">
-            <div className="pi-title">العيار الأكثر طلباً</div>
+            <div className="pi-title">{t.pi_top_karat}</div>
             <div className="pi-karat">{data.topKarat ?? "—"}</div>
-            <div className="pi-sub">حسب حسابات الزوار</div>
+            <div className="pi-sub">{t.pi_top_karat_sub}</div>
           </div>
 
           {/* مخطط حركة السعر */}
           <div className="pi-card pi-chartCard">
-            <div className="pi-title">حركة السعر</div>
+            <div className="pi-title">{t.pi_chart}</div>
             {hasSeries ? (
               <svg viewBox="0 0 600 160" className="pi-chart" preserveAspectRatio="none">
                 <defs>
@@ -191,13 +179,13 @@ export default function PublicInsights() {
                 />
               </svg>
             ) : (
-              <p className="pi-muted pi-empty">لا توجد بيانات كافية لعرض المنحنى بعد</p>
+              <p className="pi-muted pi-empty">{t.pi_no_chart}</p>
             )}
           </div>
 
           {/* ترتيب المحافظات */}
           <div className="pi-card pi-rankCard">
-            <div className="pi-title">ترتيب المحافظات</div>
+            <div className="pi-title">{t.pi_provinces}</div>
             {hasRanking ? (
               <div className="pi-rankList">
                 {data.provinceRanking.map((p, i) => (
@@ -211,7 +199,7 @@ export default function PublicInsights() {
                 ))}
               </div>
             ) : (
-              <p className="pi-muted">لا توجد بيانات بعد</p>
+              <p className="pi-muted">{t.pi_nodata}</p>
             )}
           </div>
         </div>

@@ -5,18 +5,19 @@ import { usePathname, useRouter } from "next/navigation";
 import { Menu, X, ChevronDown, LogOut, LayoutDashboard } from "lucide-react";
 import { supabase } from "@/app/lib/supabaseClient";
 import { useCurrency, type Currency } from "@/app/lib/currency";
+import { useT } from "@/app/lib/i18n";
+import { type Lang } from "@/app/lib/language";
 
 type MaybeSession = { user?: { id?: string } } | null;
 type OwnerShop = { id: string; name: string | null; logo_url: string | null };
 
-// روابط التنقّل
+// روابط التنقّل — التسميات تُترجَم عبر مفاتيح i18n
 const NAV = [
-  { href: "/", label: "الأسعار الحالية" },
-  { href: "/magazine", label: "المجلة" },
-  { href: "/shops", label: "المحلات" },
+  { href: "/", key: "nav_prices" as const },
+  { href: "/magazine", key: "nav_magazine" as const },
+  { href: "/shops", key: "nav_shops" as const },
 ];
 
-// الرابط نشط: مطابقة تامة للرئيسية، وبادئة لغيرها
 function isActive(pathname: string | null, href: string) {
   return href === "/" ? pathname === "/" : !!pathname?.startsWith(href);
 }
@@ -29,7 +30,7 @@ function CurrencyToggle({
   onChange: (c: Currency) => void;
 }) {
   return (
-    <div className="cur" role="group" aria-label="العملة">
+    <div className="cur" role="group" aria-label="Currency">
       {(["USD", "IQD"] as Currency[]).map((c) => (
         <button
           key={c}
@@ -68,7 +69,58 @@ function CurrencyToggle({
   );
 }
 
-// مكوّن مستقل بنطاق أنماط خاص (مضمون عبر styled-jsx) — دخول أو قائمة حساب الصاغة.
+function LanguageToggle({
+  lang,
+  onChange,
+}: {
+  lang: Lang;
+  onChange: (l: Lang) => void;
+}) {
+  const OPTIONS: { value: Lang; label: string }[] = [
+    { value: "ar", label: "عربي" },
+    { value: "en", label: "EN" },
+  ];
+  return (
+    <div className="lang" role="group" aria-label="Language">
+      {OPTIONS.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          className={lang === o.value ? "lang-btn active" : "lang-btn"}
+          onClick={() => onChange(o.value)}
+        >
+          {o.label}
+        </button>
+      ))}
+      <style jsx>{`
+        .lang {
+          display: inline-flex;
+          border: 1px solid var(--stroke);
+          border-radius: 999px;
+          padding: 3px;
+          background: rgba(255, 255, 255, 0.04);
+        }
+        .lang-btn {
+          border: 0;
+          background: transparent;
+          color: var(--muted);
+          font-size: 13px;
+          font-weight: 700;
+          padding: 5px 12px;
+          border-radius: 999px;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+        .lang-btn.active {
+          color: #111;
+          background: linear-gradient(135deg, #f2d27b, #d7b45a);
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// مكوّن مستقل بنطاق أنماط خاص — دخول أو قائمة حساب الصاغة.
 function AccountSlot({
   loggedIn,
   shop,
@@ -78,6 +130,7 @@ function AccountSlot({
   shop: OwnerShop | null;
   onLogout: () => void;
 }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
 
@@ -94,7 +147,7 @@ function AccountSlot({
     return (
       <>
         <a href="/owner/login" className="login-btn">
-          دخول
+          {t.login}
         </a>
         <style jsx>{`
           .login-btn {
@@ -113,7 +166,7 @@ function AccountSlot({
     );
   }
 
-  const initial = (shop?.name?.trim()?.[0] ?? "ح").toUpperCase();
+  const initial = (shop?.name?.trim()?.[0] ?? "G").toUpperCase();
 
   return (
     <div className="acct" ref={ref}>
@@ -126,7 +179,7 @@ function AccountSlot({
       >
         {shop?.logo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={shop.logo_url} alt={shop.name ?? "حسابي"} />
+          <img src={shop.logo_url} alt={shop.name ?? "account"} />
         ) : (
           <span>{initial}</span>
         )}
@@ -135,7 +188,7 @@ function AccountSlot({
       {open && (
         <div className="acct-menu" role="menu">
           <a href="/dashboard" role="menuitem" className="acct-item">
-            <LayoutDashboard size={15} /> لوحة التحكم
+            <LayoutDashboard size={15} /> {t.dashboard}
           </a>
           <button
             type="button"
@@ -143,7 +196,7 @@ function AccountSlot({
             className="acct-item danger"
             onClick={onLogout}
           >
-            <LogOut size={15} /> تسجيل الخروج
+            <LogOut size={15} /> {t.logout}
           </button>
         </div>
       )}
@@ -184,7 +237,7 @@ function AccountSlot({
         .acct-menu {
           position: absolute;
           top: 48px;
-          inset-inline-start: 0;
+          inset-inline-end: 0;
           min-width: 180px;
           padding: 6px;
           border-radius: 14px;
@@ -200,7 +253,7 @@ function AccountSlot({
           align-items: center;
           gap: 8px;
           width: 100%;
-          text-align: right;
+          text-align: start;
           padding: 10px 12px;
           border-radius: 10px;
           background: transparent;
@@ -224,13 +277,13 @@ function AccountSlot({
 export default function SiteHeader() {
   const router = useRouter();
   const pathname = usePathname();
+  const { t, lang, setLang } = useT();
   const [currency, setCurrency] = useCurrency();
 
   const [shop, setShop] = useState<OwnerShop | null>(null);
   const [loggedIn, setLoggedIn] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false); // قائمة الموبايل
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  // حالة المصادقة + محل المالك
   useEffect(() => {
     let alive = true;
     async function loadForUser(userId: string | null) {
@@ -262,7 +315,6 @@ export default function SiteHeader() {
     };
   }, []);
 
-  // إغلاق قائمة الموبايل عند تغيّر الصفحة
   useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
@@ -272,24 +324,12 @@ export default function SiteHeader() {
     router.push("/");
   }
 
-  // لا نعرض الـHeader في صفحات الأدمن
   if (pathname?.startsWith("/admin")) return null;
 
   return (
-    <header className="hdr" dir="rtl">
+    <header className="hdr">
       <div className="hdr-inner">
-        {/* زر الهامبرغر (موبايل فقط) */}
-        <button
-          type="button"
-          className="hamburger"
-          aria-label="القائمة"
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((v) => !v)}
-        >
-          {menuOpen ? <X size={22} /> : <Menu size={22} />}
-        </button>
-
-        {/* الشعار */}
+        {/* الشعار — يسار دائماً، ثابت في اللغتين */}
         <a href="/" className="logo">
           Goldary
         </a>
@@ -302,20 +342,30 @@ export default function SiteHeader() {
               href={item.href}
               className={isActive(pathname, item.href) ? "nav-link active" : "nav-link"}
             >
-              {item.label}
+              {t[item.key]}
             </a>
           ))}
         </nav>
 
-        {/* الأدوات (ديسكتوب): عملة + حساب */}
+        {/* الأدوات (ديسكتوب) */}
         <div className="tools">
           <CurrencyToggle currency={currency} onChange={setCurrency} />
+          <LanguageToggle lang={lang} onChange={setLang} />
           <AccountSlot loggedIn={loggedIn} shop={shop} onLogout={logout} />
         </div>
 
-        {/* شريحة الحساب في الموبايل (يمين) */}
-        <div className="tools-mobile">
+        {/* أدوات الموبايل: دخول + هامبرغر (يمين) */}
+        <div className="mobile-actions">
           <AccountSlot loggedIn={loggedIn} shop={shop} onLogout={logout} />
+          <button
+            type="button"
+            className="hamburger"
+            aria-label="Menu"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((v) => !v)}
+          >
+            {menuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
         </div>
       </div>
 
@@ -325,13 +375,17 @@ export default function SiteHeader() {
           <nav className="mobile-nav">
             {NAV.map((item) => (
               <a key={item.href} href={item.href} className="mobile-link">
-                {item.label}
+                {t[item.key]}
               </a>
             ))}
           </nav>
-          <div className="mobile-cur">
-            <span className="mobile-cur-label">العملة</span>
+          <div className="mobile-row">
+            <span className="mobile-row-label">{t.currency}</span>
             <CurrencyToggle currency={currency} onChange={setCurrency} />
+          </div>
+          <div className="mobile-row">
+            <span className="mobile-row-label">{t.language}</span>
+            <LanguageToggle lang={lang} onChange={setLang} />
           </div>
         </div>
       )}
@@ -345,7 +399,9 @@ export default function SiteHeader() {
           backdrop-filter: blur(12px);
           border-bottom: 1px solid var(--stroke);
         }
+        /* الشريط دائماً LTR: الشعار يسار، الأدوات يمين — بصرف النظر عن لغة الصفحة */
         .hdr-inner {
+          direction: ltr;
           max-width: 1200px;
           margin: 0 auto;
           padding: 12px 20px;
@@ -367,7 +423,7 @@ export default function SiteHeader() {
         .nav {
           display: flex;
           gap: 6px;
-          margin-inline-start: 8px;
+          margin-inline-start: auto; /* يدفع التنقّل والأدوات إلى اليمين */
         }
         .nav-link {
           color: var(--muted);
@@ -386,23 +442,24 @@ export default function SiteHeader() {
           color: var(--gold2);
         }
         .tools {
-          margin-inline-start: auto;
           display: flex;
           align-items: center;
           gap: 12px;
         }
-        .tools-mobile {
+        .mobile-actions {
           display: none;
+          align-items: center;
+          gap: 10px;
+          margin-inline-start: auto;
         }
         .hamburger {
-          display: none;
           background: transparent;
           border: 0;
           color: var(--gold2);
           cursor: pointer;
           padding: 4px;
+          display: inline-flex;
         }
-        /* لوحة الموبايل */
         .mobile-menu {
           display: none;
         }
@@ -421,13 +478,13 @@ export default function SiteHeader() {
         .mobile-link:hover {
           color: var(--gold2);
         }
-        .mobile-cur {
+        .mobile-row {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 16px 8px 4px;
+          padding: 14px 8px 0;
         }
-        .mobile-cur-label {
+        .mobile-row-label {
           color: var(--muted);
           font-size: 14px;
         }
@@ -435,39 +492,28 @@ export default function SiteHeader() {
         /* ===== موبايل: أقل من 768px ===== */
         @media (max-width: 767px) {
           .hdr-inner {
-            /* اتجاه ثابت للشريط: هامبرغر يسار · شعار وسط · دخول يمين */
-            direction: ltr;
-            display: grid;
-            grid-template-columns: 1fr auto 1fr;
-            align-items: center;
-            gap: 10px;
             padding: 10px 16px;
-          }
-          .hamburger {
-            display: inline-flex;
-            justify-self: start;
+            gap: 10px;
           }
           .logo {
-            justify-self: center;
             font-size: 20px;
           }
           .nav,
           .tools {
             display: none;
           }
-          .tools-mobile {
+          .mobile-actions {
             display: flex;
-            justify-self: end;
           }
           .mobile-menu {
             display: block;
+            direction: inherit;
             padding: 8px 16px 18px;
             border-top: 1px solid var(--stroke);
             background: rgba(11, 11, 14, 0.98);
           }
         }
 
-        /* ===== ديسكتوب واسع: 1200px+ ===== */
         @media (min-width: 1200px) {
           .hdr-inner {
             padding: 14px 24px;
