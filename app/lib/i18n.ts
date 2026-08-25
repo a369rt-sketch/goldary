@@ -157,6 +157,28 @@ const DICT = {
     login_btn_verify: "تأكيد وتسجيل الدخول",
     login_btn_change_email: "تغيير البريد",
     login_btn_resend: "إعادة إرسال الرمز",
+
+    // نظام إدارة المقالات (أدوار + موافقة)
+    submit_article: "✍️ إرسال مقال",
+    b_submit_review: "إرسال للمراجعة",
+    m_submitted: "تم إرسال المقال للمراجعة ✓",
+    pending_note: "مقالك بانتظار موافقة الإدارة.",
+    admin_articles: "إدارة المقالات",
+    admin_pending: "بانتظار الموافقة",
+    admin_published: "المقالات المنشورة",
+    approve: "موافقة",
+    reject: "رفض",
+    no_pending: "لا توجد مقالات معلّقة",
+    by_author: "بقلم",
+    access_checking: "جارٍ التحقق…",
+    access_denied: "لا تملك صلاحية الوصول لهذه الصفحة.",
+    view: "عرض",
+    statuses: {
+      draft: "مسودة",
+      pending: "قيد المراجعة",
+      approved: "منشور",
+      rejected: "مرفوض",
+    },
   },
   en: {
     nav_prices: "Live Prices",
@@ -305,6 +327,28 @@ const DICT = {
     login_btn_verify: "Confirm & log in",
     login_btn_change_email: "Change email",
     login_btn_resend: "Resend code",
+
+    // Article management (roles + approval)
+    submit_article: "✍️ Submit Article",
+    b_submit_review: "Submit for review",
+    m_submitted: "Submitted for review ✓",
+    pending_note: "Your article is pending admin approval.",
+    admin_articles: "Manage Articles",
+    admin_pending: "Pending Approval",
+    admin_published: "Published Articles",
+    approve: "Approve",
+    reject: "Reject",
+    no_pending: "No pending articles",
+    by_author: "by",
+    access_checking: "Checking…",
+    access_denied: "You don't have access to this page.",
+    view: "View",
+    statuses: {
+      draft: "Draft",
+      pending: "Pending",
+      approved: "Published",
+      rejected: "Rejected",
+    },
   },
 } as const;
 

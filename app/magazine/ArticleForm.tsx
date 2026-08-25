@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import { X, Upload, Loader } from 'lucide-react';
 import { useT } from '@/app/lib/i18n';
+import { authFetch, useAuthRole } from '@/app/lib/useAuth';
+
+type SubmitStatus = 'draft' | 'pending' | 'approved';
 
 export type ArticleCategory =
   | 'news'
@@ -49,6 +52,7 @@ interface ArticleFormProps {
 
 export default function ArticleForm({ initial, onClose, onSaved }: ArticleFormProps) {
   const { t } = useT();
+  const { isAdmin } = useAuthRole();
   const isEdit = Boolean(initial?.id);
   const [isLoading, setIsLoading] = useState(false);
   const [form, setForm] = useState<ArticleFormData>({
@@ -85,7 +89,7 @@ export default function ArticleForm({ initial, onClose, onSaved }: ArticleFormPr
     formData.append('bucket', 'magazine-covers');
 
     try {
-      const response = await fetch('/api/magazine/upload', {
+      const response = await authFetch('/api/magazine/upload', {
         method: 'POST',
         body: formData,
       });
@@ -106,30 +110,33 @@ export default function ArticleForm({ initial, onClose, onSaved }: ArticleFormPr
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submit = async (status: SubmitStatus) => {
     setIsLoading(true);
-
     try {
-      const response = await fetch('/api/magazine/articles', {
+      const payload = isEdit
+        ? { id: initial!.id, ...form, status }
+        : { ...form, status };
+      const response = await authFetch('/api/magazine/articles', {
         method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(isEdit ? { id: initial!.id, ...form } : form),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
         setMessage(
           isEdit
             ? t.m_updated
-            : form.published
+            : status === 'approved'
             ? t.m_published
+            : status === 'pending'
+            ? `${t.m_submitted} — ${t.pending_note}`
             : t.m_draft_saved
         );
         setTimeout(() => {
           setMessage('');
           onSaved?.();
           onClose();
-        }, 1200);
+        }, 1500);
       } else {
         setMessage(t.m_save_fail);
       }
@@ -139,6 +146,13 @@ export default function ArticleForm({ initial, onClose, onSaved }: ArticleFormPr
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // زر الإرسال الأساسي: أدمن → نشر/مسودة حسب الاختيار، مساهم → إرسال للمراجعة
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isAdmin) submit(form.published ? 'approved' : 'draft');
+    else submit('pending');
   };
 
   return (
@@ -296,39 +310,73 @@ export default function ArticleForm({ initial, onClose, onSaved }: ArticleFormPr
             <p className="text-xs text-gray-500 mt-2">{t.f_img_hint}</p>
           </div>
 
-          {/* Publish Toggle */}
-          <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              checked={form.published}
-              onChange={(e) => setForm({ ...form, published: e.target.checked })}
-              id="published"
-              className="w-4 h-4 rounded border-gold2/30 bg-dark cursor-pointer"
-            />
-            <label htmlFor="published" className="text-sm text-gold2 cursor-pointer">
-              {isEdit ? t.f_published : t.f_publish_now}
-            </label>
-          </div>
+          {/* Publish Toggle — للأدمن فقط (نشر مباشر) */}
+          {isAdmin ? (
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={form.published}
+                onChange={(e) => setForm({ ...form, published: e.target.checked })}
+                id="published"
+                className="w-4 h-4 rounded border-gold2/30 bg-dark cursor-pointer"
+              />
+              <label htmlFor="published" className="text-sm text-gold2 cursor-pointer">
+                {isEdit ? t.f_published : t.f_publish_now}
+              </label>
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400">{t.pending_note}</p>
+          )}
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-gold2 hover:bg-gold1 disabled:bg-gray-600 text-dark font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
-          >
-            {isLoading ? (
-              <>
-                <Loader size={18} className="animate-spin" />
-                {t.b_saving}
-              </>
-            ) : isEdit ? (
-              t.b_save_edits
-            ) : form.published ? (
-              t.b_publish
-            ) : (
-              t.b_save_draft
-            )}
-          </button>
+          {isAdmin ? (
+            /* الأدمن: زر واحد (نشر/حفظ حسب الاختيار) */
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-gold2 hover:bg-gold1 disabled:bg-gray-600 text-dark font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
+            >
+              {isLoading ? (
+                <>
+                  <Loader size={18} className="animate-spin" />
+                  {t.b_saving}
+                </>
+              ) : isEdit ? (
+                t.b_save_edits
+              ) : form.published ? (
+                t.b_publish
+              ) : (
+                t.b_save_draft
+              )}
+            </button>
+          ) : (
+            /* المساهم: حفظ مسودة + إرسال للمراجعة */
+            <div className="flex gap-3">
+              <button
+                type="button"
+                disabled={isLoading}
+                onClick={() => submit('draft')}
+                className="flex-1 border border-gold2/40 text-gold2 disabled:opacity-50 font-semibold py-3 rounded-lg transition"
+              >
+                {t.b_save_draft}
+              </button>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="flex-1 bg-gold2 hover:bg-gold1 disabled:bg-gray-600 text-dark font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader size={18} className="animate-spin" />
+                    {t.b_saving}
+                  </>
+                ) : isEdit ? (
+                  t.b_submit_review
+                ) : (
+                  t.b_submit_review
+                )}
+              </button>
+            </div>
+          )}
         </form>
       </div>
     </div>

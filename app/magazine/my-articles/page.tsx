@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import ArticleForm, { type ArticleCategory } from '../ArticleForm';
 import { useT } from '@/app/lib/i18n';
+import { authFetch } from '@/app/lib/useAuth';
+
+type ArticleStatus = 'draft' | 'pending' | 'approved' | 'rejected';
 
 type Article = {
   id: string;
@@ -13,8 +16,17 @@ type Article = {
   category: ArticleCategory;
   cover_image_url: string | null;
   published: boolean;
+  status: ArticleStatus;
   created_at: string;
   published_at: string | null;
+};
+
+// ألوان شارات الحالة
+const STATUS_COLOR: Record<ArticleStatus, { bg: string; color: string }> = {
+  draft: { bg: 'rgba(160,160,160,0.15)', color: '#9aa' },
+  pending: { bg: 'rgba(242,210,123,0.15)', color: '#f2d27b' },
+  approved: { bg: 'rgba(60,180,90,0.15)', color: '#43c66a' },
+  rejected: { bg: 'rgba(220,60,60,0.15)', color: '#e66' },
 };
 
 export default function MyArticlesPage() {
@@ -27,7 +39,7 @@ export default function MyArticlesPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/magazine/articles', { cache: 'no-store' });
+      const res = await authFetch('/api/magazine/articles', { cache: 'no-store' });
       const data = await res.json();
       setArticles(data.articles ?? []);
     } catch (e) {
@@ -45,7 +57,7 @@ export default function MyArticlesPage() {
     if (!confirm(t.confirm_delete.replace('{title}', article.title))) return;
     setDeletingId(article.id);
     try {
-      const res = await fetch(`/api/magazine/articles?id=${article.id}`, {
+      const res = await authFetch(`/api/magazine/articles?id=${article.id}`, {
         method: 'DELETE',
       });
       if (res.ok) {
@@ -120,14 +132,12 @@ export default function MyArticlesPage() {
                       className="pill"
                       style={{
                         fontSize: 12,
-                        background: a.published
-                          ? 'rgba(60,180,90,0.15)'
-                          : 'rgba(160,160,160,0.15)',
-                        color: a.published ? '#43c66a' : '#9aa',
+                        background: STATUS_COLOR[a.status ?? 'draft'].bg,
+                        color: STATUS_COLOR[a.status ?? 'draft'].color,
                         border: 'none',
                       }}
                     >
-                      {a.published ? t.st_published : t.st_draft}
+                      {t.statuses[a.status ?? 'draft']}
                     </span>
                   </div>
                   <p className="muted" style={{ margin: '4px 0 0', fontSize: 13 }}>

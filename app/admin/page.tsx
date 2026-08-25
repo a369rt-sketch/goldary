@@ -165,6 +165,14 @@ const months =
                       <Store size={20} />
                       <span>المحلات (طلبات الموافقة)</span>
                     </Link>
+                    <Link
+                      href="/admin/articles"
+                      className="navItem"
+                      style={{ textDecoration: "none" }}
+                    >
+                      <FileText size={20} />
+                      <span>المجلة (طلبات المقالات)</span>
+                    </Link>
                   </Fragment>
                 );
               }
