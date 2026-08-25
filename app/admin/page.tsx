@@ -1,6 +1,7 @@
 "use client";
 import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
+import { useT } from "@/app/lib/i18n";
 import {
   Home,
   Coins,
@@ -98,6 +99,8 @@ function StatCard({ icon, title, value, sub, change, series }: any) {
   );
 }
 export default function DashboardPage() {
+  const { t, dir, lang, setLang } = useT();
+  const a = t.admin;
   const [summary, setSummary] = useState<any>(null);
   const [showImportCosts, setShowImportCosts] = useState(false);
 
@@ -127,7 +130,7 @@ const months =
   
   return (
     <>
-      <main className="dashboard">
+      <main className="dashboard" dir={dir}>
         <aside className="sidebar">
           <div className="brand">
             <div className="logo">G</div>
@@ -135,27 +138,27 @@ const months =
           </div>
           <nav>
             {[
-              [Home, "Dashboard", true],
-              [Coins, "Gold Prices"],
-              [Calculator, "Calculations"],
-              [Gem, "Provinces"],
-              [BarChart3, "Karat Analytics"],
-              [Diamond, "Market Insights"],
-              [MapPin, "AI Predictions"],
-              [FileText, "Reports"],
-              [Settings, "Settings"],
-              [Users, "Users"],
-            ].map(([Icon, text, active]: any) => {
+              [Home, a.nav_dashboard, true],
+              [Coins, a.nav_gold_prices],
+              [Calculator, a.nav_calculations],
+              [Gem, a.nav_provinces],
+              [BarChart3, a.nav_karat_analytics],
+              [Diamond, a.nav_market_insights],
+              [MapPin, a.nav_ai_predictions],
+              [FileText, a.nav_reports],
+              [Settings, a.nav_settings],
+              [Users, a.nav_users],
+            ].map(([Icon, text, active]: any, i: number) => {
               const item = (
-                <div className={`navItem ${active ? "active" : ""}`} key={text}>
+                <div className={`navItem ${active ? "active" : ""}`} key={i}>
                   <Icon size={20} />
                   <span>{text}</span>
                 </div>
               );
               // رابط المحلات مباشرة بعد Dashboard (أعلى القائمة، بعيداً عن تغطية .system)
-              if (text === "Dashboard") {
+              if (i === 0) {
                 return (
-                  <Fragment key={text}>
+                  <Fragment key={i}>
                     {item}
                     <Link
                       href="/admin/shops"
@@ -163,7 +166,7 @@ const months =
                       style={{ textDecoration: "none" }}
                     >
                       <Store size={20} />
-                      <span>المحلات (طلبات الموافقة)</span>
+                      <span>{a.nav_shops}</span>
                     </Link>
                     <Link
                       href="/admin/articles"
@@ -171,7 +174,7 @@ const months =
                       style={{ textDecoration: "none" }}
                     >
                       <FileText size={20} />
-                      <span>المجلة (طلبات المقالات)</span>
+                      <span>{a.nav_articles}</span>
                     </Link>
                   </Fragment>
                 );
@@ -181,16 +184,16 @@ const months =
           </nav>
           <div className="system">
             <div>
-              <h4>Live System</h4>
+              <h4>{a.live_system}</h4>
               {summary == null ? (
-                <p style={{ color: "rgba(255,255,255,0.55)" }}>Checking…</p>
+                <p style={{ color: "rgba(255,255,255,0.55)" }}>{a.checking}</p>
               ) : summary.isLive ? (
-                <p>All systems active</p>
+                <p>{a.all_active}</p>
               ) : (
                 <p style={{ color: "#ffcc4a" }}>
                   {summary.lastUpdate
-                    ? `آخر تحديث: ${new Date(summary.lastUpdate).toLocaleString()}`
-                    : "لا توجد تغذية أسعار بعد"}
+                    ? `${a.last_update}: ${new Date(summary.lastUpdate).toLocaleString(lang === "ar" ? "ar-EG" : "en")}`
+                    : a.no_feed}
                 </p>
               )}
             </div>
@@ -201,17 +204,50 @@ const months =
         <section className="content">
           <header className="topbar">
             <div>
-              <h1>Goldary Intelligence</h1>
-              <p>Analytics Dashboard</p>
+              <h1>{a.intelligence}</h1>
+              <p>{a.analytics_dashboard}</p>
+            </div>
+            {/* مبدّل اللغة (لوحة الأدمن بلا Header عام) */}
+            <div
+              style={{
+                display: "inline-flex",
+                gap: 4,
+                border: "1px solid rgba(255,255,255,0.15)",
+                borderRadius: 999,
+                padding: 3,
+              }}
+            >
+              {(["ar", "en"] as const).map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setLang(l)}
+                  style={{
+                    border: 0,
+                    cursor: "pointer",
+                    fontWeight: 700,
+                    fontSize: 13,
+                    padding: "5px 12px",
+                    borderRadius: 999,
+                    background:
+                      lang === l
+                        ? "linear-gradient(135deg,#f2d27b,#d7b45a)"
+                        : "transparent",
+                    color: lang === l ? "#111" : "rgba(255,255,255,0.7)",
+                  }}
+                >
+                  {l === "ar" ? "عربي" : "EN"}
+                </button>
+              ))}
             </div>
             <div className="search">
               <Search size={18} />
-              <input placeholder="Search anything..." />
+              <input placeholder={a.search_ph} />
             </div>
             <button>
             <div className="dateBtn">
   <CalendarDays size={18} />
-  {new Date().toLocaleDateString("en-US", {
+  {new Date().toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", {
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -222,26 +258,26 @@ const months =
             </button>
             <button className="live">
               <span />
-              Live Data
+              {a.live_data}
             </button>
           </header>
           <section className="statsGrid">
-          <StatCard icon={<Calculator size={30} />} title="Total Calculations" value={summary?.totalCalculations ?? 0} sub="All pricing events" change={summary?.totalChange ?? null} series={summary?.priceSeries} />
-<StatCard icon={<Coins size={30} />} title="Avg Calculation Value" value={`${summary?.averagePrice?.toLocaleString() ?? 0} IQD`} sub="Average user calculation" change={summary?.avgChange ?? null} series={summary?.priceSeries} />
-<StatCard icon={<Users size={30} />} title="Modified Users" value={summary?.modifiedUsers ?? 0} sub="Adjusted inputs" change={summary?.modifiedChange ?? null} series={summary?.priceSeries} />
-<StatCard icon={<PieChart size={30} />} title="Customization Rate" value={`${Math.round(
+          <StatCard icon={<Calculator size={30} />} title={a.total_calc} value={summary?.totalCalculations ?? 0} sub={a.total_calc_sub} change={summary?.totalChange ?? null} series={summary?.priceSeries} />
+<StatCard icon={<Coins size={30} />} title={a.avg_value} value={`${summary?.averagePrice?.toLocaleString() ?? 0} IQD`} sub={a.avg_value_sub} change={summary?.avgChange ?? null} series={summary?.priceSeries} />
+<StatCard icon={<Users size={30} />} title={a.modified_users} value={summary?.modifiedUsers ?? 0} sub={a.modified_users_sub} change={summary?.modifiedChange ?? null} series={summary?.priceSeries} />
+<StatCard icon={<PieChart size={30} />} title={a.customization_rate} value={`${Math.round(
   ((summary?.modifiedUsers || 0) /
     (summary?.totalCalculations || 1)) *
     100
 )}%`}
- sub="Users who modified inputs" change={summary?.customizationChange ?? null} series={summary?.priceSeries} />
+ sub={a.customization_rate_sub} change={summary?.customizationChange ?? null} series={summary?.priceSeries} />
           </section>
           <section className="grid">
             <div className="card trends">
               <div className="head">
                 <div>
-                  <h3>Calculation Trends</h3>
-                  <p>Monthly Activity Overview</p>
+                  <h3>{a.calc_trends}</h3>
+                  <p>{a.monthly_overview}</p>
                 </div>
                 <button>2025⌄</button>
               </div>
@@ -255,8 +291,8 @@ const months =
               </div>
             </div>
             <div className="card ranking">
-              <h3>Province Ranking</h3>
-              <p>Regional Activity</p>
+              <h3>{a.province_ranking}</h3>
+              <p>{a.regional_activity}</p>
               <div className="rankList">
               {provinces.map(([name, value, percent]: any, index: number) => ( 
                                  <div className="rankRow" key={name}>
@@ -270,22 +306,22 @@ const months =
                   </div>
                 ))}
               </div>
-              <a>View all provinces ›</a>
+              <a>{a.view_all_provinces}</a>
             </div>
             <div className="card topKarat">
-              <h3>Top Karat</h3>
-              <p>Most Selected</p>
+              <h3>{a.top_karat}</h3>
+              <p>{a.most_selected}</p>
               <div className="karatFlex">
-              <h2>{summary?.topKarat ?? "N/A"}</h2>
+              <h2>{summary?.topKarat ?? a.na}</h2>
                 <div className="ring" />
               </div>
-              <p>Most preferred gold karat</p>
+              <p>{a.most_preferred}</p>
             </div>
             <div className="card market">
               <div className="head">
                 <div>
-                  <h3>Market Movement</h3>
-                  <p>Price Trend Analysis</p>
+                  <h3>{a.market_movement}</h3>
+                  <p>{a.price_trend}</p>
                 </div>
                 {(() => {
                   const m = summary?.marketMovement;
@@ -330,19 +366,19 @@ const months =
                     color: "rgba(255,255,255,0.45)",
                   }}
                 >
-                  لا توجد بيانات كافية لعرض المنحنى
+                  {a.no_chart}
                 </div>
               )}
             </div>
             <div className="card notes">
-              <h3>Intelligence Notes</h3>
-              <p>Quick Insights</p>
+              <h3>{a.intel_notes}</h3>
+              <p>{a.quick_insights}</p>
               {[
-             [Crown, "Market Leader", summary?.topProvince ?? "N/A"],
-             [Diamond, "Karat Preference", summary?.topKarat ?? "N/A"],
+             [Crown, a.market_leader, summary?.topProvince ?? a.na],
+             [Diamond, a.karat_pref, summary?.topKarat ?? a.na],
              [
                PieChart,
-               "Customization Rate",
+               a.customization_rate,
                `${Math.round(
                  ((summary?.modifiedUsers || 0) /
                    (summary?.totalCalculations || 1)) *
@@ -351,7 +387,7 @@ const months =
              ],
              [
                Activity,
-               "Top Province Calcs",
+               a.top_province_calcs,
                summary?.provinceRanking?.[0]?.count ?? 0,
              ],
               ].map(([Icon, label, value]: any) => (
@@ -365,13 +401,13 @@ const months =
               ))}
             </div>
             <div className="card province">
-              <h3>Top Province</h3>
-              <p>Most Active Location</p>
-              <h2>{summary?.topProvince ?? "N/A"}</h2>
+              <h3>{a.top_province}</h3>
+              <p>{a.most_active}</p>
+              <h2>{summary?.topProvince ?? a.na}</h2>
               <div className="mapShape">◇</div>
               <button>
                 <MapPin size={16} />
-                View on map
+                {a.view_on_map}
               </button>
             
             {summary?.recentCalculations?.map((item: any, index: number) => (
@@ -379,7 +415,7 @@ const months =
     <span className="dot green" />
     <div>
       <b>
-        {item.operation_type || "calculation"} from {item.province || "Unknown"}
+        {item.operation_type || a.ev_calc} {a.ev_from} {item.province || a.unknown}
       </b>
       <p>
         {item.karat} • {Number(item.calculated_price || 0).toLocaleString()} IQD
