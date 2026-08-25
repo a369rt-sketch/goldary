@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/supabaseClient";
+import { useT } from "@/app/lib/i18n";
 
 type Step = "email" | "code";
 
 export default function OwnerLoginPage() {
   const router = useRouter();
+  const { t, dir } = useT();
 
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
@@ -24,7 +26,7 @@ export default function OwnerLoginPage() {
 
     const value = email.trim();
     if (!value || !value.includes("@")) {
-      setError("الرجاء إدخال بريد إلكتروني صالح");
+      setError(t.login_err_email);
       return;
     }
 
@@ -36,12 +38,12 @@ export default function OwnerLoginPage() {
     setLoading(false);
 
     if (error) {
-      setError("تعذّر إرسال الرمز، حاول مرة أخرى");
+      setError(t.login_err_send);
       return;
     }
 
     setStep("code");
-    setNotice("أرسلنا رمزاً مكوّناً من 6 أرقام إلى بريدك");
+    setNotice(t.login_notice_sent);
   }
 
   // الخطوة 2: التحقق من الرمز وتسجيل الدخول
@@ -51,7 +53,7 @@ export default function OwnerLoginPage() {
 
     const token = code.trim();
     if (token.length < 6) {
-      setError("الرجاء إدخال الرمز كاملاً");
+      setError(t.login_err_code_full);
       return;
     }
 
@@ -64,7 +66,7 @@ export default function OwnerLoginPage() {
     setLoading(false);
 
     if (error) {
-      setError("الرمز غير صحيح أو منتهي الصلاحية");
+      setError(t.login_err_code_invalid);
       return;
     }
 
@@ -72,18 +74,16 @@ export default function OwnerLoginPage() {
   }
 
   return (
-    <main className="container" dir="rtl">
-      <h1 className="title">تسجيل دخول أصحاب المحلات</h1>
+    <main className="container" dir={dir}>
+      <h1 className="title">{t.login_title}</h1>
       <p className="lead muted">
-        {step === "email"
-          ? "أدخل بريدك الإلكتروني وسنرسل لك رمز دخول"
-          : "أدخل الرمز الذي وصلك على البريد"}
+        {step === "email" ? t.login_lead_email : t.login_lead_code}
       </p>
 
       <div className="card" style={{ maxWidth: 420 }}>
         {step === "email" ? (
           <form onSubmit={sendCode}>
-            <label className="label" htmlFor="email">البريد الإلكتروني</label>
+            <label className="label" htmlFor="email">{t.login_label_email}</label>
             <input
               id="email"
               className="input"
@@ -103,12 +103,12 @@ export default function OwnerLoginPage() {
               disabled={loading}
               style={{ marginTop: 14, width: "100%" }}
             >
-              {loading ? "جارٍ الإرسال…" : "إرسال الرمز"}
+              {loading ? t.login_btn_sending : t.login_btn_send}
             </button>
           </form>
         ) : (
           <form onSubmit={verifyCode}>
-            <label className="label" htmlFor="code">رمز التحقق</label>
+            <label className="label" htmlFor="code">{t.login_label_code}</label>
             <input
               id="code"
               className="input"
@@ -130,7 +130,7 @@ export default function OwnerLoginPage() {
               disabled={loading}
               style={{ marginTop: 14, width: "100%" }}
             >
-              {loading ? "جارٍ التحقق…" : "تأكيد وتسجيل الدخول"}
+              {loading ? t.login_btn_verifying : t.login_btn_verify}
             </button>
 
             <div className="row" style={{ marginTop: 12, justifyContent: "space-between" }}>
@@ -144,7 +144,7 @@ export default function OwnerLoginPage() {
                   setNotice("");
                 }}
               >
-                تغيير البريد
+                {t.login_btn_change_email}
               </button>
               <button
                 type="button"
@@ -152,7 +152,7 @@ export default function OwnerLoginPage() {
                 onClick={() => sendCode()}
                 disabled={loading}
               >
-                إعادة إرسال الرمز
+                {t.login_btn_resend}
               </button>
             </div>
           </form>
