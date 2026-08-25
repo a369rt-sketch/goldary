@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useT } from "@/app/lib/i18n";
 
 type Props = {
   images: string[];
@@ -8,6 +9,7 @@ type Props = {
 };
 
 export default function ShopGallery({ images, shopName }: Props) {
+  const { t } = useT();
   const [index, setIndex] = useState<number | null>(null);
 
   const close = useCallback(() => setIndex(null), []);
@@ -56,7 +58,7 @@ export default function ShopGallery({ images, shopName }: Props) {
 
   return (
     <div className="card">
-      <div className="card-title" style={{ marginBottom: 10 }}>معرض الصور</div>
+      <div className="card-title" style={{ marginBottom: 10 }}>{t.gallery}</div>
 
       <div
         style={{
@@ -100,7 +102,7 @@ export default function ShopGallery({ images, shopName }: Props) {
           <button
             type="button"
             onClick={close}
-            aria-label="إغلاق"
+            aria-label={t.close}
             style={{
               position: "absolute",
               top: 16,
@@ -123,7 +125,7 @@ export default function ShopGallery({ images, shopName }: Props) {
               {/* السابق على اليمين (طبيعي بالـ RTL) */}
               <button
                 type="button"
-                aria-label="السابق"
+                aria-label={t.prev}
                 onClick={(e) => {
                   e.stopPropagation();
                   prev();
@@ -135,7 +137,7 @@ export default function ShopGallery({ images, shopName }: Props) {
               {/* التالي على اليسار */}
               <button
                 type="button"
-                aria-label="التالي"
+                aria-label={t.next}
                 onClick={(e) => {
                   e.stopPropagation();
                   next();

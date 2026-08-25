@@ -1,10 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import ArticleForm, {
-  CATEGORIES,
-  type ArticleCategory,
-} from '../ArticleForm';
+import ArticleForm, { type ArticleCategory } from '../ArticleForm';
+import { useT } from '@/app/lib/i18n';
 
 type Article = {
   id: string;
@@ -19,11 +17,8 @@ type Article = {
   published_at: string | null;
 };
 
-const CATEGORY_LABEL = Object.fromEntries(
-  CATEGORIES.map((c) => [c.value, c.label])
-) as Record<ArticleCategory, string>;
-
 export default function MyArticlesPage() {
+  const { t, lang } = useT();
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Article | null>(null);
@@ -47,7 +42,7 @@ export default function MyArticlesPage() {
   }, [load]);
 
   const handleDelete = async (article: Article) => {
-    if (!confirm(`حذف المقال "${article.title}"؟ لا يمكن التراجع.`)) return;
+    if (!confirm(t.confirm_delete.replace('{title}', article.title))) return;
     setDeletingId(article.id);
     try {
       const res = await fetch(`/api/magazine/articles?id=${article.id}`, {
@@ -56,36 +51,36 @@ export default function MyArticlesPage() {
       if (res.ok) {
         setArticles((prev) => prev.filter((a) => a.id !== article.id));
       } else {
-        alert('فشل حذف المقال');
+        alert(t.delete_failed);
       }
     } catch (e) {
       console.error('Delete failed:', e);
-      alert('خطأ في الحذف');
+      alert(t.delete_error);
     } finally {
       setDeletingId(null);
     }
   };
 
   return (
-    <main className="container" dir="rtl">
+    <main className="container">
       <div className="row-between" style={{ alignItems: 'flex-end' }}>
         <div>
-          <h1 className="title">مقالاتي</h1>
-          <p className="muted">إدارة المقالات — مسودات ومنشورة</p>
+          <h1 className="title">{t.my_articles}</h1>
+          <p className="muted">{t.manage_articles}</p>
         </div>
         <a href="/magazine" className="btn-secondary">
-          ← المجلة
+          {t.back_to_magazine}
         </a>
       </div>
 
       {loading ? (
         <p className="muted" style={{ marginTop: 24 }}>
-          جارٍ التحميل…
+          {t.loading}
         </p>
       ) : articles.length === 0 ? (
         <div className="card" style={{ maxWidth: 520, marginTop: 24 }}>
           <p className="muted" style={{ margin: 0 }}>
-            لا توجد مقالات بعد
+            {t.no_articles_yet}
           </p>
         </div>
       ) : (
@@ -132,12 +127,12 @@ export default function MyArticlesPage() {
                         border: 'none',
                       }}
                     >
-                      {a.published ? 'منشور' : 'مسودة'}
+                      {a.published ? t.st_published : t.st_draft}
                     </span>
                   </div>
                   <p className="muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
-                    {CATEGORY_LABEL[a.category] ?? a.category} ·{' '}
-                    {new Date(a.created_at).toLocaleDateString('ar-EG')}
+                    {t.categories[a.category] ?? a.category} ·{' '}
+                    {new Date(a.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en')}
                   </p>
                 </div>
               </div>
@@ -148,7 +143,7 @@ export default function MyArticlesPage() {
                   className="btn-secondary"
                   onClick={() => setEditing(a)}
                 >
-                  تعديل
+                  {t.edit}
                 </button>
                 <button
                   type="button"
@@ -164,7 +159,7 @@ export default function MyArticlesPage() {
                     fontWeight: 600,
                   }}
                 >
-                  {deletingId === a.id ? '...' : 'حذف'}
+                  {deletingId === a.id ? '...' : t.delete}
                 </button>
               </div>
             </div>

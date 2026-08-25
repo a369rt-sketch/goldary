@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useT } from "@/app/lib/i18n";
 
 type Props = {
   title: string;
@@ -8,6 +9,7 @@ type Props = {
 
 // زر مشاركة — Web Share API إن توفّر، وإلا نسخ الرابط
 export default function ShareButton({ title }: Props) {
+  const { t } = useT();
   const [copied, setCopied] = useState(false);
 
   async function share() {
@@ -36,7 +38,7 @@ export default function ShareButton({ title }: Props) {
 
   return (
     <button type="button" className="btn-secondary small-btn" onClick={share}>
-      {copied ? "تم نسخ الرابط ✓" : "مشاركة"}
+      {copied ? t.share_copied : t.share}
     </button>
   );
 }

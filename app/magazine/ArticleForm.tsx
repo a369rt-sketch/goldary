@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { X, Upload, Loader } from 'lucide-react';
+import { useT } from '@/app/lib/i18n';
 
 export type ArticleCategory =
   | 'news'
@@ -47,6 +48,7 @@ interface ArticleFormProps {
 }
 
 export default function ArticleForm({ initial, onClose, onSaved }: ArticleFormProps) {
+  const { t } = useT();
   const isEdit = Boolean(initial?.id);
   const [isLoading, setIsLoading] = useState(false);
   const [form, setForm] = useState<ArticleFormData>({
@@ -91,14 +93,14 @@ export default function ArticleForm({ initial, onClose, onSaved }: ArticleFormPr
       const data = await response.json();
       if (data.url) {
         setForm((prev) => ({ ...prev, coverImageUrl: data.url }));
-        setMessage('تم رفع الصورة بنجاح ✓');
+        setMessage(t.m_img_ok);
         setTimeout(() => setMessage(''), 3000);
       } else {
-        setMessage('فشل رفع الصورة');
+        setMessage(t.m_img_fail);
       }
     } catch (error) {
       console.error('Upload error:', error);
-      setMessage('خطأ في رفع الصورة');
+      setMessage(t.m_img_err);
     } finally {
       setUploadingImage(false);
     }
@@ -118,10 +120,10 @@ export default function ArticleForm({ initial, onClose, onSaved }: ArticleFormPr
       if (response.ok) {
         setMessage(
           isEdit
-            ? 'تم تحديث المقال ✓'
+            ? t.m_updated
             : form.published
-            ? 'تم نشر المقال ✓'
-            : 'تم حفظ المسودة ✓'
+            ? t.m_published
+            : t.m_draft_saved
         );
         setTimeout(() => {
           setMessage('');
@@ -129,11 +131,11 @@ export default function ArticleForm({ initial, onClose, onSaved }: ArticleFormPr
           onClose();
         }, 1200);
       } else {
-        setMessage('فشل حفظ المقال');
+        setMessage(t.m_save_fail);
       }
     } catch (error) {
       console.error('Submit error:', error);
-      setMessage('خطأ في الحفظ');
+      setMessage(t.m_save_err);
     } finally {
       setIsLoading(false);
     }
@@ -145,12 +147,12 @@ export default function ArticleForm({ initial, onClose, onSaved }: ArticleFormPr
         {/* Header */}
         <div className="sticky top-0 bg-dark border-b border-gold2/30 px-6 py-4 flex justify-between items-center">
           <h2 className="text-2xl font-bold text-gold2">
-            {isEdit ? 'تعديل المقال' : 'مقال جديد'}
+            {isEdit ? t.form_edit : t.form_new}
           </h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gold2 transition"
-            aria-label="إغلاق"
+            aria-label={t.close}
           >
             <X size={24} />
           </button>
@@ -168,13 +170,13 @@ export default function ArticleForm({ initial, onClose, onSaved }: ArticleFormPr
           {/* Title */}
           <div>
             <label className="block text-sm font-semibold text-gold2 mb-2">
-              العنوان *
+              {t.f_title} *
             </label>
             <input
               type="text"
               value={form.title}
               onChange={handleTitleChange}
-              placeholder="اكتب عنوان المقال"
+              placeholder={t.f_title_ph}
               className="w-full bg-dark border border-gold2/30 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:border-gold2 focus:outline-none transition"
               required
             />
@@ -183,7 +185,7 @@ export default function ArticleForm({ initial, onClose, onSaved }: ArticleFormPr
           {/* Slug */}
           <div>
             <label className="block text-sm font-semibold text-gold2 mb-2">
-              الرابط (Slug)
+              {t.f_slug}
             </label>
             <input
               type="text"
@@ -196,7 +198,7 @@ export default function ArticleForm({ initial, onClose, onSaved }: ArticleFormPr
           {/* Cover Image */}
           <div>
             <label className="block text-sm font-semibold text-gold2 mb-2">
-              صورة المقال
+              {t.f_cover}
             </label>
             <div className="flex items-center gap-4">
               {form.coverImageUrl ? (
@@ -222,7 +224,7 @@ export default function ArticleForm({ initial, onClose, onSaved }: ArticleFormPr
                   ) : (
                     <>
                       <Upload className="w-6 h-6 text-gold2 mx-auto mb-2" />
-                      <p className="text-sm text-gold2">انقر لرفع صورة</p>
+                      <p className="text-sm text-gold2">{t.f_upload}</p>
                       <p className="text-xs text-gray-500 mt-1">
                         JPG · PNG · WebP · GIF
                       </p>
@@ -243,7 +245,7 @@ export default function ArticleForm({ initial, onClose, onSaved }: ArticleFormPr
           {/* Category */}
           <div>
             <label className="block text-sm font-semibold text-gold2 mb-2">
-              الفئة *
+              {t.f_category} *
             </label>
             <select
               value={form.category}
@@ -257,7 +259,7 @@ export default function ArticleForm({ initial, onClose, onSaved }: ArticleFormPr
             >
               {CATEGORIES.map((cat) => (
                 <option key={cat.value} value={cat.value}>
-                  {cat.label}
+                  {t.categories[cat.value]}
                 </option>
               ))}
             </select>
@@ -266,12 +268,12 @@ export default function ArticleForm({ initial, onClose, onSaved }: ArticleFormPr
           {/* Excerpt */}
           <div>
             <label className="block text-sm font-semibold text-gold2 mb-2">
-              الملخص *
+              {t.f_excerpt} *
             </label>
             <textarea
               value={form.excerpt}
               onChange={(e) => setForm({ ...form, excerpt: e.target.value })}
-              placeholder="ملخص قصير للمقال"
+              placeholder={t.f_excerpt_ph}
               rows={3}
               className="w-full bg-dark border border-gold2/30 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:border-gold2 focus:outline-none transition resize-none"
               required
@@ -281,17 +283,17 @@ export default function ArticleForm({ initial, onClose, onSaved }: ArticleFormPr
           {/* Content (Markdown) */}
           <div>
             <label className="block text-sm font-semibold text-gold2 mb-2">
-              المحتوى * (Markdown)
+              {t.f_content} *
             </label>
             <textarea
               value={form.content}
               onChange={(e) => setForm({ ...form, content: e.target.value })}
-              placeholder="اكتب محتوى المقال هنا... يمكنك استخدام Markdown للتنسيق"
+              placeholder={t.f_content_ph}
               rows={10}
               className="w-full bg-dark border border-gold2/30 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:border-gold2 focus:outline-none transition resize-none font-mono text-sm"
               required
             />
-            <p className="text-xs text-gray-500 mt-2">للصور استخدم: ![alt](url)</p>
+            <p className="text-xs text-gray-500 mt-2">{t.f_img_hint}</p>
           </div>
 
           {/* Publish Toggle */}
@@ -304,7 +306,7 @@ export default function ArticleForm({ initial, onClose, onSaved }: ArticleFormPr
               className="w-4 h-4 rounded border-gold2/30 bg-dark cursor-pointer"
             />
             <label htmlFor="published" className="text-sm text-gold2 cursor-pointer">
-              {isEdit ? 'منشور' : 'نشر المقال الآن'}
+              {isEdit ? t.f_published : t.f_publish_now}
             </label>
           </div>
 
@@ -317,14 +319,14 @@ export default function ArticleForm({ initial, onClose, onSaved }: ArticleFormPr
             {isLoading ? (
               <>
                 <Loader size={18} className="animate-spin" />
-                جاري الحفظ...
+                {t.b_saving}
               </>
             ) : isEdit ? (
-              'حفظ التعديلات'
+              t.b_save_edits
             ) : form.published ? (
-              'نشر المقال'
+              t.b_publish
             ) : (
-              'حفظ كمسودة'
+              t.b_save_draft
             )}
           </button>
         </form>

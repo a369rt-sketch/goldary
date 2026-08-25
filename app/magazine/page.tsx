@@ -3,25 +3,24 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   getPublishedArticles,
-  CATEGORY_LABELS,
-  AFFECTS_META,
   type Article,
   type ArticleCategory,
 } from "@/app/lib/articles";
+import { useT } from "@/app/lib/i18n";
 import ArticleEditor from "./ArticleEditor";
 
 type Tab = "all" | ArticleCategory;
 
-const TABS: { key: Tab; label: string }[] = [
-  { key: "all", label: "الكل" },
-  { key: "news", label: CATEGORY_LABELS.news },
-  { key: "analysis", label: CATEGORY_LABELS.analysis },
-  { key: "learn", label: CATEGORY_LABELS.learn },
-  { key: "investment", label: CATEGORY_LABELS.investment },
-  { key: "markets", label: CATEGORY_LABELS.markets },
-];
+const TAB_KEYS: Tab[] = ["all", "news", "analysis", "learn", "investment", "markets"];
+// أيقونات "يؤثر على" (النصوص من الترجمة)
+const AFFECT_ICON: Record<string, string> = {
+  local: "🟢",
+  global: "🌍",
+  dollar: "💵",
+};
 
 export default function MagazinePage() {
+  const { t } = useT();
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("all");
@@ -44,42 +43,44 @@ export default function MagazinePage() {
   );
 
   return (
-    <main className="container" dir="rtl">
+    <main className="container">
       <div className="row-between" style={{ alignItems: "flex-end" }}>
         <div>
-          <h1 className="title">مجلة Goldary</h1>
-          <p className="muted">أخبار وتحليلات الذهب والسوق في العراق</p>
+          <h1 className="title">{t.mag_title}</h1>
+          <p className="muted">{t.mag_subtitle}</p>
         </div>
         <div className="row" style={{ gap: 8 }}>
-          <a href="/magazine/my-articles" className="btn-secondary">مقالاتي</a>
-          <a href="/" className="btn-secondary">الرئيسية</a>
+          <a href="/magazine/my-articles" className="btn-secondary">{t.my_articles}</a>
+          <a href="/" className="btn-secondary">{t.home}</a>
         </div>
       </div>
 
       {/* تبويبات الأقسام */}
       <div className="row" style={{ gap: 10, flexWrap: "wrap", marginTop: 18 }}>
-        {TABS.map((t) => (
+        {TAB_KEYS.map((key) => (
           <button
-            key={t.key}
+            key={key}
             type="button"
-            className={tab === t.key ? "pill active" : "pill"}
-            onClick={() => setTab(t.key)}
+            className={tab === key ? "pill active" : "pill"}
+            onClick={() => setTab(key)}
           >
-            {t.label}
+            {key === "all" ? t.tab_all : t.categories[key]}
           </button>
         ))}
       </div>
 
       {loading ? (
-        <p className="muted" style={{ marginTop: 24 }}>جارٍ التحميل…</p>
+        <p className="muted" style={{ marginTop: 24 }}>{t.loading}</p>
       ) : filtered.length === 0 ? (
         <div className="card" style={{ maxWidth: 520, marginTop: 24 }}>
-          <p className="muted" style={{ margin: 0 }}>لا توجد مقالات في هذا القسم بعد</p>
+          <p className="muted" style={{ margin: 0 }}>{t.mag_empty}</p>
         </div>
       ) : (
         <div className="grid" style={{ marginTop: 24 }}>
           {filtered.map((a) => {
-            const affects = a.affects ? AFFECTS_META[a.affects] : null;
+            const affects = a.affects
+              ? { icon: AFFECT_ICON[a.affects], label: t.affects[a.affects] }
+              : null;
             return (
               <a key={a.id} href={`/magazine/${a.slug}`} className="card mag-card">
                 {a.cover_image_url ? (
@@ -92,7 +93,7 @@ export default function MagazinePage() {
                 ) : null}
                 <div className="card-body">
                   <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-                    <span className="mag-tag">{CATEGORY_LABELS[a.category]}</span>
+                    <span className="mag-tag">{t.categories[a.category]}</span>
                     {affects ? (
                       <span className="mag-affects">
                         {affects.icon} {affects.label}
