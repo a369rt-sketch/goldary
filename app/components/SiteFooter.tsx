@@ -9,6 +9,7 @@ export default function SiteFooter() {
     { href: "/", label: t.nav_prices },
     { href: "/magazine", label: t.nav_magazine },
     { href: "/shops", label: t.nav_shops },
+    { href: "/aurum", label: "Aurum" },
   ];
 
   return (
