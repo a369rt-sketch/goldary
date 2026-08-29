@@ -7,6 +7,8 @@ import { supabase } from "@/app/lib/supabaseClient";
 import { useCurrency, type Currency } from "@/app/lib/currency";
 import { useT } from "@/app/lib/i18n";
 import { type Lang } from "@/app/lib/language";
+import { getProfile, dashboardHref, type AccountType } from "@/app/lib/profile";
+import AuthModal from "./AuthModal";
 
 type MaybeSession = { user?: { id?: string } } | null;
 type OwnerShop = { id: string; name: string | null; logo_url: string | null };
@@ -124,10 +126,14 @@ function LanguageToggle({
 function AccountSlot({
   loggedIn,
   shop,
+  dashHref,
+  onLoginClick,
   onLogout,
 }: {
   loggedIn: boolean;
   shop: OwnerShop | null;
+  dashHref: string;
+  onLoginClick: () => void;
   onLogout: () => void;
 }) {
   const { t } = useT();
@@ -146,18 +152,20 @@ function AccountSlot({
   if (!loggedIn) {
     return (
       <>
-        <a href="/owner/login" className="login-btn">
+        <button type="button" className="login-btn" onClick={onLoginClick}>
           {t.login}
-        </a>
+        </button>
         <style jsx>{`
           .login-btn {
             display: inline-block;
+            border: 0;
             text-decoration: none;
             font-weight: 800;
             font-size: 14px;
             color: #111;
             padding: 9px 18px;
             border-radius: 999px;
+            cursor: pointer;
             background: linear-gradient(135deg, #f2d27b, #d7b45a);
             white-space: nowrap;
           }
@@ -187,7 +195,7 @@ function AccountSlot({
       </button>
       {open && (
         <div className="acct-menu" role="menu">
-          <a href="/dashboard" role="menuitem" className="acct-item">
+          <a href={dashHref} role="menuitem" className="acct-item">
             <LayoutDashboard size={15} /> {t.dashboard}
           </a>
           <button
@@ -283,6 +291,8 @@ export default function SiteHeader() {
   const [shop, setShop] = useState<OwnerShop | null>(null);
   const [loggedIn, setLoggedIn] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [accountType, setAccountType] = useState<AccountType | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -291,6 +301,7 @@ export default function SiteHeader() {
       setLoggedIn(!!userId);
       if (!userId) {
         setShop(null);
+        setAccountType(null);
         return;
       }
       const { data } = await supabase
@@ -299,6 +310,8 @@ export default function SiteHeader() {
         .eq("owner_id", userId)
         .maybeSingle();
       if (alive) setShop((data as OwnerShop) ?? null);
+      const profile = await getProfile();
+      if (alive) setAccountType(profile?.account_type ?? null);
     }
 
     supabase.auth
@@ -327,6 +340,7 @@ export default function SiteHeader() {
   if (pathname?.startsWith("/admin")) return null;
 
   return (
+    <>
     <header className="hdr">
       <div className="hdr-inner">
         {/* الشعار — يسار دائماً، ثابت في اللغتين */}
@@ -351,12 +365,24 @@ export default function SiteHeader() {
         <div className="tools">
           <CurrencyToggle currency={currency} onChange={setCurrency} />
           <LanguageToggle lang={lang} onChange={setLang} />
-          <AccountSlot loggedIn={loggedIn} shop={shop} onLogout={logout} />
+          <AccountSlot
+            loggedIn={loggedIn}
+            shop={shop}
+            dashHref={dashboardHref(accountType)}
+            onLoginClick={() => setAuthOpen(true)}
+            onLogout={logout}
+          />
         </div>
 
         {/* أدوات الموبايل: دخول + هامبرغر (يمين) */}
         <div className="mobile-actions">
-          <AccountSlot loggedIn={loggedIn} shop={shop} onLogout={logout} />
+          <AccountSlot
+            loggedIn={loggedIn}
+            shop={shop}
+            dashHref={dashboardHref(accountType)}
+            onLoginClick={() => setAuthOpen(true)}
+            onLogout={logout}
+          />
           <button
             type="button"
             className="hamburger"
@@ -524,5 +550,7 @@ export default function SiteHeader() {
         }
       `}</style>
     </header>
+    <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
+    </>
   );
 }
