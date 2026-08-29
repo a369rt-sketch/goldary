@@ -57,7 +57,7 @@ export async function getGramHistory(limit = 120): Promise<GramPoint[]> {
       date: r.recorded_at,
       sell: Number(r.sell_gram_iqd) || 0,
     }))
-    .filter((p) => p.sell > 0);
+    .filter((p: GramPoint) => p.sell > 0);
 }
 
 // أرخص يوم شراء ضمن التاريخ المتاح

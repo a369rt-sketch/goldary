@@ -11,14 +11,17 @@ export default function AurumPage() {
 
   useEffect(() => {
     let alive = true;
-    supabase.auth.getUser().then((res) => {
+    (async () => {
+      const { data } = await supabase.auth.getUser();
       if (!alive) return;
-      setUserId(res.data.user?.id ?? null);
+      setUserId(data.user?.id ?? null);
       setLoading(false);
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      setUserId(session?.user?.id ?? null);
-    });
+    })();
+    const { data: sub } = supabase.auth.onAuthStateChange(
+      (_event: string, session: { user?: { id?: string } } | null) => {
+        setUserId(session?.user?.id ?? null);
+      }
+    );
     return () => {
       alive = false;
       sub.subscription.unsubscribe();
