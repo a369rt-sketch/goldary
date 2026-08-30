@@ -34,6 +34,7 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<ShopItem | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setItems(await getMyItems(shopUserId));
@@ -43,6 +44,11 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
   useEffect(() => {
     load();
   }, [load]);
+
+  function notify(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 4500);
+  }
 
   async function handleSave(input: ItemInput) {
     if (editing) await updateItem(editing.id, input);
@@ -55,6 +61,10 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
   async function changeStatus(id: string, status: ShopItemStatus) {
     setBusy(id);
     await setItemStatus(id, status);
+    if (status === "sold") {
+      const it = items.find((i) => i.id === id);
+      notify(`🎉 تم تسجيل بيع «${it?.name ?? "قطعة"}»${it?.price != null ? ` بمبلغ ${fmt(it.price)}` : ""}`);
+    }
     await load();
     setBusy(null);
   }
@@ -68,6 +78,10 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
   }
 
   const published = items.filter((i) => i.status === "published");
+  const sold = items.filter((i) => i.status === "sold");
+  const totalSales = sold.reduce((s, i) => s + (Number(i.price) || 0), 0);
+  const saleDate = (iso: string) =>
+    new Date(iso).toLocaleDateString("ar-EG", { day: "numeric", month: "long", year: "numeric" });
 
   const Thumb = ({ it }: { it: ShopItem }) => (
     <div className="si-media">
@@ -99,6 +113,17 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
 
   return (
     <>
+      {/* إشعار بيع فوري */}
+      {toast && <div className="si-toast">{toast}</div>}
+
+      {/* ملخّص المبيعات (إشعار دائم) */}
+      {sold.length > 0 && (
+        <div className="si-sales-banner">
+          💰 <b>{sold.length}</b> قطعة مباعة · إجمالي المبيعات{" "}
+          <b className="si-gold">{fmt(totalSales)}</b>
+        </div>
+      )}
+
       {/* قسم أ: مخزوني */}
       <section className="si card">
         <div className="si-head">
@@ -206,7 +231,79 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
         )}
       </section>
 
+      {/* قسم المبيعات */}
+      {sold.length > 0 && (
+        <section className="si card">
+          <div className="card-title" style={{ marginBottom: 12 }}>
+            المبيعات ({sold.length}) — {fmt(totalSales)}
+          </div>
+          <div className="si-grid">
+            {sold.map((it) => (
+              <div className="si-item si-solditem" key={it.id}>
+                <Thumb it={it} />
+                <div className="si-info">
+                  <div className="si-name">{it.name}</div>
+                  <div className="si-meta">
+                    {it.karat ?? "—"} · {fmt(it.price)} · بيعت {saleDate(it.updated_at)}
+                  </div>
+                </div>
+                <div className="si-actions">
+                  <button
+                    className="si-btn"
+                    disabled={busy === it.id}
+                    onClick={() => changeStatus(it.id, "draft")}
+                  >
+                    إرجاع للمخزن
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <style jsx>{`
+        .si-toast {
+          position: fixed;
+          bottom: 24px;
+          inset-inline-start: 50%;
+          transform: translateX(50%);
+          z-index: 4500;
+          max-width: 90vw;
+          background: linear-gradient(135deg, #f2d27b, #d7b45a);
+          color: #111;
+          font-weight: 800;
+          padding: 12px 20px;
+          border-radius: 999px;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+          animation: siToast 0.3s ease;
+        }
+        @keyframes siToast {
+          from {
+            opacity: 0;
+            transform: translate(50%, 12px);
+          }
+          to {
+            opacity: 1;
+            transform: translate(50%, 0);
+          }
+        }
+        .si-sales-banner {
+          max-width: 720px;
+          margin-bottom: 16px;
+          padding: 12px 16px;
+          border-radius: 14px;
+          border: 1px solid rgba(60, 180, 90, 0.4);
+          background: rgba(60, 180, 90, 0.12);
+          color: var(--text);
+          font-size: 14px;
+        }
+        .si-gold {
+          color: var(--gold2);
+        }
+        .si-solditem {
+          opacity: 0.85;
+        }
         .si {
           max-width: 720px;
         }
