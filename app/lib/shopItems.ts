@@ -36,6 +36,17 @@ export async function getMyItems(shopUserId: string): Promise<ShopItem[]> {
   return (data as ShopItem[]) ?? [];
 }
 
+// كل القطع المنشورة (عبر كل المحلات) — للاقتراحات العامة (anon مسموح)
+export async function getAllPublishedItems(limit = 30): Promise<ShopItem[]> {
+  const { data } = await supabase
+    .from("shop_items")
+    .select("*")
+    .eq("status", "published")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return (data as ShopItem[]) ?? [];
+}
+
 // القطع المنشورة لمحل معيّن (عرض عام) — anon مسموح عبر سياسة public
 export async function getPublishedByShop(shopUserId: string): Promise<ShopItem[]> {
   const { data } = await supabase

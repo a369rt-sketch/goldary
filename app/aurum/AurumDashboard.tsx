@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/app/lib/supabaseClient";
 import { getLatestGramPrice } from "@/app/lib/gramPrices";
 import { getShopsWithPrices, pricesByKarat } from "@/app/lib/shops";
+import { getAllPublishedItems, type ShopItem } from "@/app/lib/shopItems";
 import {
   GOAL_TYPES,
   goalTypeMeta,
@@ -16,6 +17,7 @@ import {
 } from "@/app/lib/aurum";
 
 type ShopSuggestion = { id: string; name: string; price: number };
+type ShopRef = { id: string; name: string };
 
 export default function AurumDashboard({ userId }: { userId: string }) {
   const [goals, setGoals] = useState<AurumGoal[]>([]);
@@ -24,6 +26,8 @@ export default function AurumDashboard({ userId }: { userId: string }) {
   const [shops, setShops] = useState<ShopSuggestion[]>([]);
   const [history, setHistory] = useState<GramPoint[]>([]);
   const [creating, setCreating] = useState(false);
+  const [items, setItems] = useState<ShopItem[]>([]);
+  const [shopMap, setShopMap] = useState<Record<string, ShopRef>>({});
 
   const loadGoals = useCallback(async () => {
     const { data } = await supabase
@@ -38,6 +42,7 @@ export default function AurumDashboard({ userId }: { userId: string }) {
     loadGoals();
     getLatestGramPrice().then((g) => setSellGram(g ? Number(g.sell_gram_iqd) : null));
     getGramHistory().then(setHistory);
+    getAllPublishedItems().then(setItems);
     getShopsWithPrices().then((list) => {
       const s = list
         .map((sh) => ({ id: sh.id, name: sh.name, price: pricesByKarat(sh.prices)["21K"] }))
@@ -45,6 +50,13 @@ export default function AurumDashboard({ userId }: { userId: string }) {
         .sort((a, b) => a.price - b.price)
         .slice(0, 3);
       setShops(s);
+      // خريطة owner_id → {id, name} لربط القطع بمحلاتها
+      const map: Record<string, ShopRef> = {};
+      for (const sh of list) {
+        const owner = (sh as { owner_id?: string }).owner_id;
+        if (owner) map[owner] = { id: sh.id, name: sh.name };
+      }
+      setShopMap(map);
     });
   }, [loadGoals]);
 
@@ -54,6 +66,18 @@ export default function AurumDashboard({ userId }: { userId: string }) {
   );
   const totalGrams = sellGram ? totalSaved / sellGram : 0;
   const cheapest = useMemo(() => cheapestDay(history), [history]);
+
+  // قطع مقترحة: القابلة للشراء ضمن الرصيد أولاً (الأغلى)، ثم الأقرب فالأرخص
+  const suggestions = useMemo(() => {
+    const priced = items.filter((i) => i.price != null);
+    const affordable = priced
+      .filter((i) => (i.price as number) <= totalSaved)
+      .sort((a, b) => (b.price as number) - (a.price as number));
+    const rest = priced
+      .filter((i) => (i.price as number) > totalSaved)
+      .sort((a, b) => (a.price as number) - (b.price as number));
+    return [...affordable, ...rest].slice(0, 6);
+  }, [items, totalSaved]);
 
   async function createGoal(form: NewGoal) {
     const target = Number(form.target_amount);
@@ -197,6 +221,111 @@ export default function AurumDashboard({ userId }: { userId: string }) {
           </div>
         </section>
       )}
+
+      {/* قطع مقترحة من معروضات الصاغة */}
+      {suggestions.length > 0 && (
+        <section className="au-intel">
+          <h2 className="au-h2">قطع مقترحة لكِ</h2>
+          <div className="au-pieces">
+            {suggestions.map((it) => {
+              const ref = shopMap[it.shop_id];
+              const affordable = it.price != null && it.price <= totalSaved;
+              const card = (
+                <>
+                  <div className="au-piece-img">
+                    {it.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={it.image_url} alt={it.name} />
+                    ) : (
+                      <span>💍</span>
+                    )}
+                    {affordable && <span className="au-afford">ضمن رصيدك ✓</span>}
+                  </div>
+                  <div className="au-piece-body">
+                    <div className="au-piece-name">{it.name}</div>
+                    <div className="au-lbl">
+                      {it.karat ?? "—"}
+                      {it.weight != null ? ` · ${it.weight} غ` : ""}
+                      {ref ? ` · ${ref.name}` : ""}
+                    </div>
+                    <div className="au-gold" style={{ marginTop: 4, fontWeight: 700 }}>
+                      {it.price != null ? fmtIqd(it.price) : "—"}
+                    </div>
+                  </div>
+                </>
+              );
+              return ref ? (
+                <a key={it.id} href={`/shops/${ref.id}`} className="au-piece">
+                  {card}
+                </a>
+              ) : (
+                <div key={it.id} className="au-piece">
+                  {card}
+                </div>
+              );
+            })}
+          </div>
+          <p className="au-note" style={{ marginTop: 12 }}>
+            اقتراحات تعليمية من معروضات صاغة Goldary — ليست عرض بيع أو نصيحة.
+          </p>
+        </section>
+      )}
+
+      <style jsx>{`
+        .au-pieces {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+          gap: 12px;
+        }
+        .au-piece {
+          display: block;
+          text-decoration: none;
+          color: var(--text);
+          border: 1px solid rgba(215, 180, 90, 0.2);
+          border-radius: 14px;
+          overflow: hidden;
+          background: rgba(0, 0, 0, 0.2);
+          transition: border-color 0.15s ease, transform 0.15s ease;
+        }
+        .au-piece:hover {
+          border-color: rgba(215, 180, 90, 0.55);
+          transform: translateY(-2px);
+        }
+        .au-piece-img {
+          position: relative;
+          height: 130px;
+          background: rgba(255, 255, 255, 0.05);
+          display: grid;
+          place-items: center;
+          font-size: 34px;
+        }
+        .au-piece-img img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .au-afford {
+          position: absolute;
+          top: 8px;
+          inset-inline-end: 8px;
+          background: rgba(60, 180, 90, 0.9);
+          color: #06210f;
+          font-size: 11px;
+          font-weight: 700;
+          padding: 3px 8px;
+          border-radius: 999px;
+        }
+        .au-piece-body {
+          padding: 10px 12px;
+        }
+        .au-piece-name {
+          font-weight: 700;
+          color: var(--gold2);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      `}</style>
 
       <style jsx>{`
         .au-dash {
