@@ -28,6 +28,7 @@ export default function AurumDashboard({ userId }: { userId: string }) {
   const [creating, setCreating] = useState(false);
   const [items, setItems] = useState<ShopItem[]>([]);
   const [shopMap, setShopMap] = useState<Record<string, ShopRef>>({});
+  const [targetId, setTargetId] = useState<string | null>(null);
 
   const loadGoals = useCallback(async () => {
     const { data } = await supabase
@@ -38,8 +39,17 @@ export default function AurumDashboard({ userId }: { userId: string }) {
     setLoading(false);
   }, []);
 
+  const loadTarget = useCallback(async () => {
+    const { data } = await supabase
+      .from("aurum_targets")
+      .select("item_id")
+      .maybeSingle();
+    setTargetId((data as { item_id: string } | null)?.item_id ?? null);
+  }, []);
+
   useEffect(() => {
     loadGoals();
+    loadTarget();
     getLatestGramPrice().then((g) => setSellGram(g ? Number(g.sell_gram_iqd) : null));
     getGramHistory().then(setHistory);
     getAllPublishedItems().then(setItems);
@@ -58,7 +68,25 @@ export default function AurumDashboard({ userId }: { userId: string }) {
       }
       setShopMap(map);
     });
-  }, [loadGoals]);
+  }, [loadGoals, loadTarget]);
+
+  // قطعة الهدف (من القطع المنشورة المُحمَّلة)
+  const targetItem = useMemo(
+    () => (targetId ? items.find((i) => i.id === targetId) ?? null : null),
+    [targetId, items]
+  );
+
+  async function setTarget(itemId: string) {
+    await supabase
+      .from("aurum_targets")
+      .upsert({ user_id: userId, item_id: itemId }, { onConflict: "user_id" });
+    setTargetId(itemId);
+  }
+
+  async function removeTarget() {
+    await supabase.from("aurum_targets").delete().eq("user_id", userId);
+    setTargetId(null);
+  }
 
   const totalSaved = useMemo(
     () => goals.reduce((s, g) => s + (Number(g.current_amount) || 0), 0),
@@ -194,6 +222,78 @@ export default function AurumDashboard({ userId }: { userId: string }) {
         </button>
       </div>
 
+      {/* قطعتي الهدف */}
+      {targetId &&
+        (targetItem ? (
+          (() => {
+            const price = targetItem.price ?? 0;
+            const pct = price > 0 ? Math.min(100, (totalSaved / price) * 100) : 0;
+            const remaining = Math.max(0, price - totalSaved);
+            const reached = totalSaved >= price && price > 0;
+            const ref = shopMap[targetItem.shop_id];
+            return (
+              <section className="au-target">
+                <div className="au-target-top">
+                  <span className="au-target-tag">🎯 قطعتي الهدف</span>
+                  <button className="au-target-x" onClick={removeTarget}>
+                    إزالة الهدف
+                  </button>
+                </div>
+                <div className="au-target-main">
+                  <div className="au-target-img">
+                    {targetItem.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={targetItem.image_url} alt={targetItem.name} />
+                    ) : (
+                      <span>💍</span>
+                    )}
+                  </div>
+                  <div className="au-target-info">
+                    <b>{targetItem.name}</b>
+                    <span className="au-lbl">
+                      {targetItem.karat ?? "—"}
+                      {targetItem.weight != null ? ` · ${targetItem.weight} غ` : ""}
+                      {ref ? ` · ${ref.name}` : ""}
+                    </span>
+                    <div className="au-target-bar">
+                      <i style={{ width: `${pct}%` }} />
+                    </div>
+                    <div className="au-target-nums">
+                      <span>{fmtIqd(totalSaved)}</span>
+                      <span className="au-lbl">{Math.round(pct)}%</span>
+                      <span className="au-lbl">{fmtIqd(price)}</span>
+                    </div>
+                    <div className="au-target-status">
+                      {reached ? (
+                        <b className="au-gold">🎉 وصلتِ لهدفك! يكفي رصيدك لشرائها.</b>
+                      ) : (
+                        <span>يتبقّى <b className="au-gold">{fmtIqd(remaining)}</b> للوصول لهدفك.</span>
+                      )}
+                    </div>
+                    {ref && (
+                      <a className="au-reached-link" href={`/shops/${ref.id}`}>
+                        عرض القطعة في المحل ←
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </section>
+            );
+          })()
+        ) : (
+          <section className="au-target">
+            <div className="au-target-top">
+              <span className="au-target-tag">🎯 قطعتي الهدف</span>
+              <button className="au-target-x" onClick={removeTarget}>
+                إزالة
+              </button>
+            </div>
+            <p className="au-note" style={{ margin: 0 }}>
+              لم تعد قطعة هدفك متاحة (بيعت أو أُلغي عرضها). اختاري قطعة أخرى من الاقتراحات.
+            </p>
+          </section>
+        ))}
+
       {creating && <GoalForm onCreate={createGoal} />}
 
       {loading ? (
@@ -314,6 +414,18 @@ export default function AurumDashboard({ userId }: { userId: string }) {
                     <div className="au-gold" style={{ marginTop: 4, fontWeight: 700 }}>
                       {it.price != null ? fmtIqd(it.price) : "—"}
                     </div>
+                    <button
+                      type="button"
+                      className={targetId === it.id ? "au-target-btn active" : "au-target-btn"}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (targetId === it.id) removeTarget();
+                        else setTarget(it.id);
+                      }}
+                    >
+                      {targetId === it.id ? "🎯 هدفكِ الحالي" : "🎯 اجعليها هدفي"}
+                    </button>
                   </div>
                 </>
               );
@@ -437,6 +549,106 @@ export default function AurumDashboard({ userId }: { userId: string }) {
           color: var(--muted);
           cursor: pointer;
           font-size: 14px;
+        }
+        .au-target {
+          margin-bottom: 18px;
+          padding: 16px 18px;
+          border-radius: 18px;
+          border: 1px solid rgba(215, 180, 90, 0.45);
+          background: radial-gradient(
+              120% 140% at 100% 0%,
+              rgba(215, 180, 90, 0.14),
+              transparent 60%
+            ),
+            rgba(255, 255, 255, 0.03);
+        }
+        .au-target-top {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 12px;
+        }
+        .au-target-tag {
+          color: var(--gold2);
+          font-weight: 800;
+          font-size: 15px;
+        }
+        .au-target-x {
+          background: none;
+          border: 0;
+          color: var(--muted);
+          cursor: pointer;
+          font-size: 12px;
+          text-decoration: underline;
+        }
+        .au-target-main {
+          display: flex;
+          gap: 14px;
+          flex-wrap: wrap;
+        }
+        .au-target-img {
+          width: 96px;
+          height: 96px;
+          border-radius: 14px;
+          overflow: hidden;
+          flex-shrink: 0;
+          background: rgba(255, 255, 255, 0.05);
+          display: grid;
+          place-items: center;
+          font-size: 34px;
+        }
+        .au-target-img img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .au-target-info {
+          flex: 1;
+          min-width: 200px;
+        }
+        .au-target-info b {
+          font-size: 17px;
+          color: var(--gold2);
+        }
+        .au-target-bar {
+          height: 10px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.08);
+          overflow: hidden;
+          margin: 12px 0 6px;
+        }
+        .au-target-bar i {
+          display: block;
+          height: 100%;
+          border-radius: 999px;
+          background: linear-gradient(90deg, #d7b45a, #f2d27b);
+          transition: width 0.4s ease;
+        }
+        .au-target-nums {
+          display: flex;
+          justify-content: space-between;
+          font-size: 13px;
+          font-weight: 600;
+        }
+        .au-target-status {
+          margin-top: 10px;
+          font-size: 14px;
+        }
+        .au-target-btn {
+          margin-top: 10px;
+          width: 100%;
+          background: transparent;
+          border: 1px solid rgba(215, 180, 90, 0.4);
+          color: var(--gold2);
+          border-radius: 10px;
+          padding: 7px;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .au-target-btn.active {
+          background: rgba(215, 180, 90, 0.18);
+          border-color: var(--gold2);
         }
       `}</style>
 
