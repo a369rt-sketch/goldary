@@ -67,17 +67,50 @@ export default function AurumDashboard({ userId }: { userId: string }) {
   const totalGrams = sellGram ? totalSaved / sellGram : 0;
   const cheapest = useMemo(() => cheapestDay(history), [history]);
 
-  // قطع مقترحة: القابلة للشراء ضمن الرصيد أولاً (الأغلى)، ثم الأقرب فالأرخص
+  // كل القطع القابلة للشراء ضمن الرصيد (الأغلى أولاً)
+  const affordableAll = useMemo(
+    () =>
+      items
+        .filter((i) => i.price != null && (i.price as number) <= totalSaved)
+        .sort((a, b) => (b.price as number) - (a.price as number)),
+    [items, totalSaved]
+  );
+
+  // قطع مقترحة: القابلة للشراء أولاً، ثم الأقرب فالأرخص
   const suggestions = useMemo(() => {
-    const priced = items.filter((i) => i.price != null);
-    const affordable = priced
-      .filter((i) => (i.price as number) <= totalSaved)
-      .sort((a, b) => (b.price as number) - (a.price as number));
-    const rest = priced
-      .filter((i) => (i.price as number) > totalSaved)
+    const rest = items
+      .filter((i) => i.price != null && (i.price as number) > totalSaved)
       .sort((a, b) => (a.price as number) - (b.price as number));
-    return [...affordable, ...rest].slice(0, 6);
-  }, [items, totalSaved]);
+    return [...affordableAll, ...rest].slice(0, 6);
+  }, [items, totalSaved, affordableAll]);
+
+  // إشعار "وصل رصيدك لقطعة": نتتبّع القطع التي سبق أن أشعرنا بها (localStorage)
+  // فيظهر التنبيه مرة واحدة عند تجاوز الرصيد سعر قطعة جديدة.
+  const [seen, setSeen] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(`aurum:reached:${userId}`);
+      setSeen(new Set(raw ? (JSON.parse(raw) as string[]) : []));
+    } catch {
+      setSeen(new Set());
+    }
+  }, [userId]);
+
+  const newlyReached = useMemo(
+    () => (seen ? affordableAll.filter((i) => !seen.has(i.id)) : []),
+    [seen, affordableAll]
+  );
+
+  function ackReached() {
+    const all = new Set(seen ?? []);
+    affordableAll.forEach((i) => all.add(i.id));
+    setSeen(all);
+    try {
+      localStorage.setItem(`aurum:reached:${userId}`, JSON.stringify([...all]));
+    } catch {
+      /* تجاهل */
+    }
+  }
 
   async function createGoal(form: NewGoal) {
     const target = Number(form.target_amount);
@@ -122,6 +155,36 @@ export default function AurumDashboard({ userId }: { userId: string }) {
 
   return (
     <div className="au-dash" dir="rtl">
+      {/* إشعار: وصل رصيدك لقطعة جديدة */}
+      {newlyReached.length > 0 && (
+        <div className="au-reached">
+          <button className="au-reached-x" onClick={ackReached} aria-label="إغلاق">
+            ✕
+          </button>
+          <div className="au-reached-emoji">🎉</div>
+          <div className="au-reached-body">
+            <b>مبروك! وصل رصيدك لقطعة</b>
+            <p>
+              يكفي رصيدك الآن لشراء{" "}
+              <strong>{newlyReached[0].name}</strong> (
+              {fmtIqd(newlyReached[0].price as number)})
+              {newlyReached.length > 1
+                ? ` و${newlyReached.length - 1} قطعة أخرى`
+                : ""}
+              .
+            </p>
+            {shopMap[newlyReached[0].shop_id] && (
+              <a
+                className="au-reached-link"
+                href={`/shops/${shopMap[newlyReached[0].shop_id].id}`}
+              >
+                عرض القطعة ←
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="au-toolbar">
         <button className="au-primary" onClick={() => setCreating((v) => !v)}>
           {creating ? "إغلاق" : "＋ هدف جديد"}
@@ -324,6 +387,56 @@ export default function AurumDashboard({ userId }: { userId: string }) {
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
+        }
+        .au-reached {
+          position: relative;
+          display: flex;
+          gap: 14px;
+          align-items: center;
+          margin-bottom: 18px;
+          padding: 16px 18px;
+          border-radius: 18px;
+          border: 1px solid rgba(60, 180, 90, 0.45);
+          background: linear-gradient(
+            135deg,
+            rgba(60, 180, 90, 0.16),
+            rgba(215, 180, 90, 0.12)
+          );
+        }
+        .au-reached-emoji {
+          font-size: 34px;
+          flex-shrink: 0;
+        }
+        .au-reached-body b {
+          color: #7ee89a;
+          font-size: 16px;
+        }
+        .au-reached-body p {
+          margin: 4px 0 0;
+          color: var(--text);
+          font-size: 14px;
+          line-height: 1.7;
+        }
+        .au-reached-body strong {
+          color: var(--gold2);
+        }
+        .au-reached-link {
+          display: inline-block;
+          margin-top: 6px;
+          color: var(--gold2);
+          font-weight: 700;
+          font-size: 13px;
+          text-decoration: none;
+        }
+        .au-reached-x {
+          position: absolute;
+          top: 10px;
+          inset-inline-start: 12px;
+          background: none;
+          border: 0;
+          color: var(--muted);
+          cursor: pointer;
+          font-size: 14px;
         }
       `}</style>
 
