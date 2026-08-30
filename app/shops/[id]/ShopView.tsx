@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   pricesByKarat,
   type ShopKarat,
@@ -8,7 +9,63 @@ import {
 import { provinces } from "@/app/lib/provinces";
 import { fmt } from "@/app/lib/goldPricing";
 import { useT } from "@/app/lib/i18n";
+import { getPublishedByShop, type ShopItem } from "@/app/lib/shopItems";
 import ShopGallery from "./ShopGallery";
+
+// معروضات المحل — القطع المنشورة (status='published') فقط
+function ShopShowcase({ ownerId }: { ownerId: string }) {
+  const [items, setItems] = useState<ShopItem[]>([]);
+  useEffect(() => {
+    getPublishedByShop(ownerId).then(setItems);
+  }, [ownerId]);
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="card">
+      <div className="card-title" style={{ marginBottom: 10 }}>معروضات المحل</div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
+          gap: 12,
+        }}
+      >
+        {items.map((it) => (
+          <div
+            key={it.id}
+            style={{
+              border: "1px solid rgba(215,180,90,0.2)",
+              borderRadius: 14,
+              overflow: "hidden",
+              background: "rgba(0,0,0,0.2)",
+            }}
+          >
+            {it.image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={it.image_url}
+                alt={it.name}
+                style={{ width: "100%", height: 140, objectFit: "cover" }}
+              />
+            ) : (
+              <div style={{ height: 140, display: "grid", placeItems: "center", fontSize: 34 }}>💍</div>
+            )}
+            <div style={{ padding: "10px 12px" }}>
+              <div style={{ fontWeight: 700, color: "var(--gold2)" }}>{it.name}</div>
+              <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
+                {it.karat ?? "—"} · {it.weight != null ? `${it.weight} غ` : "—"}
+              </div>
+              <div style={{ marginTop: 4 }}>
+                {it.price != null ? fmt(it.price, "IQD") : "—"}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const KARAT_ORDER: ShopKarat[] = ["24K", "22K", "21K", "18K"];
 const KARAT_VALUE: Record<ShopKarat, string> = {
@@ -105,6 +162,10 @@ export default function ShopView({ shop }: { shop: ShopWithPrices }) {
           ))}
         </div>
       </div>
+
+      {(shop as { owner_id?: string }).owner_id ? (
+        <ShopShowcase ownerId={(shop as { owner_id?: string }).owner_id as string} />
+      ) : null}
 
       <ShopGallery images={gallery} shopName={shop.name} />
     </main>

@@ -10,6 +10,7 @@ import {
   type ShopPrice,
 } from "@/app/lib/shops";
 import { provinces } from "@/app/lib/provinces";
+import ShopInventory from "./ShopInventory";
 
 // مسار تسجيل الدخول (موجود بالمشروع) — عدّله من هنا لو تغيّر
 const LOGIN_PATH = "/owner/login";
@@ -590,6 +591,9 @@ export default function DashboardPage() {
       ) : (
         /* 3) معتمد (وأي حالة أخرى مثل hidden/legacy) — واجهة إدارة المحل */
         <>
+          {/* مخزن الصائغ */}
+          {userId && <ShopInventory shopUserId={userId} />}
+
           {/* معلومات المحل */}
           <form className="card" style={{ maxWidth: 520 }} onSubmit={saveInfo}>
             <div className="card-title" style={{ marginBottom: 12 }}>
