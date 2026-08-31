@@ -602,10 +602,11 @@ function ItemForm({
           />
           <div className="if-row">
             <input
-              className="input"
+              className="input no-spin"
               type="number"
               inputMode="decimal"
-              placeholder="الوزن (غرام)"
+              step="any"
+              placeholder="أدخل الوزن بالجرام"
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
             />
@@ -618,7 +619,7 @@ function ItemForm({
             </select>
           </div>
           <input
-            className="input"
+            className="input no-spin"
             type="number"
             inputMode="numeric"
             placeholder="السعر (د.ع)"
@@ -731,6 +732,16 @@ function ItemForm({
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 8px;
+        }
+        /* إخفاء أزرار الـstepper (السهمين) مع إبقاء type=number لكتابة مباشرة */
+        .no-spin::-webkit-outer-spin-button,
+        .no-spin::-webkit-inner-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        .no-spin {
+          -moz-appearance: textfield;
+          appearance: textfield;
         }
         .if-actions {
           display: flex;
