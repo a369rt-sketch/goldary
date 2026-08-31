@@ -6,6 +6,8 @@ import {
   createItem,
   updateItem,
   setItemStatus,
+  publishItem,
+  unpublishItem,
   deleteItem,
   uploadItemImage,
   ITEM_KARATS,
@@ -65,6 +67,20 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
       const it = items.find((i) => i.id === id);
       notify(`🎉 تم تسجيل بيع «${it?.name ?? "قطعة"}»${it?.price != null ? ` بمبلغ ${fmt(it.price)}` : ""}`);
     }
+    await load();
+    setBusy(null);
+  }
+
+  // النشر/إلغاء النشر عبر API routes
+  async function doPublish(id: string) {
+    setBusy(id);
+    await publishItem(id);
+    await load();
+    setBusy(null);
+  }
+  async function doUnpublish(id: string) {
+    setBusy(id);
+    await unpublishItem(id);
     await load();
     setBusy(null);
   }
@@ -144,7 +160,6 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
           <ItemForm
             key={editing?.id ?? "new"}
             initial={editing}
-            shopUserId={shopUserId}
             onCancel={() => {
               setShowForm(false);
               setEditing(null);
@@ -177,7 +192,7 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
                     <button
                       className="si-btn si-pub"
                       disabled={busy === it.id}
-                      onClick={() => changeStatus(it.id, "published")}
+                      onClick={() => doPublish(it.id)}
                     >
                       نشر للعرض العام
                     </button>
@@ -213,7 +228,7 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
                   <button
                     className="si-btn"
                     disabled={busy === it.id}
-                    onClick={() => changeStatus(it.id, "draft")}
+                    onClick={() => doUnpublish(it.id)}
                   >
                     إلغاء النشر
                   </button>
@@ -417,12 +432,10 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
 // ---------- نموذج إضافة/تعديل قطعة ----------
 function ItemForm({
   initial,
-  shopUserId,
   onCancel,
   onSave,
 }: {
   initial: ShopItem | null;
-  shopUserId: string;
   onCancel: () => void;
   onSave: (input: ItemInput) => Promise<void>;
 }) {
@@ -438,7 +451,7 @@ function ItemForm({
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
-    const url = await uploadItemImage(file, shopUserId);
+    const url = await uploadItemImage(file);
     setUploading(false);
     if (url) setImageUrl(url);
   }

@@ -1,6 +1,7 @@
 "use client";
 
 import { supabase } from "@/app/lib/supabaseClient";
+import { authFetch } from "@/app/lib/useAuth";
 
 export type ShopItemStatus = "draft" | "published" | "sold";
 export const ITEM_KARATS = ["24K", "22K", "21K", "18K"] as const;
@@ -78,24 +79,31 @@ export async function setItemStatus(id: string, status: ShopItemStatus) {
     .eq("id", id);
 }
 
+// نشر/إلغاء نشر عبر API routes (service role + تحقّق ملكية)
+export async function publishItem(id: string) {
+  return authFetch(`/api/shop-items/${id}/publish`, { method: "POST" });
+}
+export async function unpublishItem(id: string) {
+  return authFetch(`/api/shop-items/${id}/unpublish`, { method: "POST" });
+}
+
 export async function deleteItem(id: string) {
   return supabase.from("shop_items").delete().eq("id", id);
 }
 
-// رفع صورة قطعة إلى bucket shop-images (عام)
-export async function uploadItemImage(
-  file: File,
-  shopUserId: string
-): Promise<string | null> {
-  const ext = file.name.split(".").pop() || "jpg";
-  const path = `items/${shopUserId}/${Date.now()}.${ext}`;
-  const { error } = await supabase.storage
-    .from("shop-images")
-    .upload(path, file, { upsert: true, contentType: file.type });
-  if (error) {
-    console.error("Item image upload failed:", error.message);
+// رفع صورة قطعة عبر API route (service role) — يتجاوز خطأ Storage RLS 403 على رفع العميل.
+export async function uploadItemImage(file: File): Promise<string | null> {
+  const form = new FormData();
+  form.append("file", file);
+  try {
+    const res = await authFetch("/api/shop-items/upload", {
+      method: "POST",
+      body: form,
+    });
+    const data = await res.json();
+    return res.ok && data.url ? (data.url as string) : null;
+  } catch (e) {
+    console.error("Item image upload failed:", e);
     return null;
   }
-  const { data } = supabase.storage.from("shop-images").getPublicUrl(path);
-  return data.publicUrl;
 }
