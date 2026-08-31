@@ -99,16 +99,20 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
   const saleDate = (iso: string) =>
     new Date(iso).toLocaleDateString("ar-EG", { day: "numeric", month: "long", year: "numeric" });
 
-  const Thumb = ({ it }: { it: ShopItem }) => (
-    <div className="si-media">
-      {it.image_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={it.image_url} alt={it.name} />
-      ) : (
-        <span className="si-noimg">💍</span>
-      )}
-    </div>
-  );
+  const Thumb = ({ it }: { it: ShopItem }) => {
+    const count = it.image_urls?.length ?? (it.image_url ? 1 : 0);
+    return (
+      <div className="si-media">
+        {it.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={it.image_url} alt={it.name} />
+        ) : (
+          <span className="si-noimg">💍</span>
+        )}
+        {count > 1 && <span className="si-count">📷 {count}</span>}
+      </div>
+    );
+  };
 
   const Info = ({ it }: { it: ShopItem }) => (
     <div className="si-info">
@@ -354,6 +358,7 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
           flex-wrap: wrap;
         }
         .si-media {
+          position: relative;
           width: 60px;
           height: 60px;
           border-radius: 10px;
@@ -362,6 +367,16 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
           background: rgba(255, 255, 255, 0.05);
           display: grid;
           place-items: center;
+        }
+        .si-count {
+          position: absolute;
+          bottom: 2px;
+          inset-inline-end: 2px;
+          background: rgba(0, 0, 0, 0.7);
+          color: #fff;
+          font-size: 10px;
+          padding: 1px 5px;
+          border-radius: 999px;
         }
         .si-media img {
           width: 100%;
@@ -443,17 +458,31 @@ function ItemForm({
   const [weight, setWeight] = useState(initial?.weight?.toString() ?? "");
   const [karat, setKarat] = useState(initial?.karat ?? "21K");
   const [price, setPrice] = useState(initial?.price?.toString() ?? "");
-  const [imageUrl, setImageUrl] = useState<string | null>(initial?.image_url ?? null);
+  const [images, setImages] = useState<string[]>(
+    initial?.image_urls?.length ? initial.image_urls : initial?.image_url ? [initial.image_url] : []
+  );
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function onFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
     setUploading(true);
-    const url = await uploadItemImage(file);
+    const uploaded: string[] = [];
+    for (const f of files) {
+      const url = await uploadItemImage(f);
+      if (url) uploaded.push(url);
+    }
+    setImages((prev) => [...prev, ...uploaded]);
     setUploading(false);
-    if (url) setImageUrl(url);
+    e.target.value = ""; // للسماح برفع نفس الملف مجدداً
+  }
+
+  function removeImage(url: string) {
+    setImages((prev) => prev.filter((u) => u !== url));
+  }
+  function makeCover(url: string) {
+    setImages((prev) => [url, ...prev.filter((u) => u !== url)]);
   }
 
   async function submit(e: React.FormEvent) {
@@ -462,7 +491,7 @@ function ItemForm({
     setBusy(true);
     await onSave({
       name: name.trim(),
-      image_url: imageUrl,
+      image_urls: images,
       weight: weight ? Number(weight) : null,
       karat,
       price: price ? Number(price) : null,
@@ -472,18 +501,40 @@ function ItemForm({
 
   return (
     <form className="if" onSubmit={submit}>
-      <div className="if-top">
-        <label className="if-image">
-          {imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={imageUrl} alt="" />
-          ) : uploading ? (
-            <span>جارٍ الرفع…</span>
-          ) : (
-            <span>＋ صورة</span>
-          )}
-          <input type="file" accept="image/*" hidden onChange={onFile} disabled={uploading} />
+      {/* صور متعددة — أول صورة = الغلاف */}
+      <div className="if-images">
+        {images.map((url, i) => (
+          <div className="if-thumb" key={url}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={url} alt="" onClick={() => makeCover(url)} />
+            {i === 0 && <span className="if-cover-badge">غلاف</span>}
+            <button
+              type="button"
+              className="if-thumb-x"
+              onClick={() => removeImage(url)}
+              aria-label="حذف الصورة"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+        <label className="if-addimg">
+          {uploading ? <span>جارٍ الرفع…</span> : <span>＋ صور</span>}
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            hidden
+            onChange={onFiles}
+            disabled={uploading}
+          />
         </label>
+      </div>
+      {images.length > 1 && (
+        <p className="if-hint">انقري على صورة لجعلها الغلاف.</p>
+      )}
+
+      <div className="if-top">
         <div className="if-fields">
           <input
             className="input"
@@ -540,24 +591,68 @@ function ItemForm({
           gap: 12px;
           flex-wrap: wrap;
         }
-        .if-image {
-          width: 90px;
-          height: 90px;
-          border-radius: 12px;
-          border: 1px solid rgba(215, 180, 90, 0.35);
-          display: grid;
-          place-items: center;
-          cursor: pointer;
-          overflow: hidden;
-          color: var(--gold2);
-          font-size: 13px;
-          text-align: center;
-          flex-shrink: 0;
+        .if-images {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+          margin-bottom: 10px;
         }
-        .if-image img {
+        .if-thumb {
+          position: relative;
+          width: 82px;
+          height: 82px;
+          border-radius: 12px;
+          overflow: hidden;
+          border: 1px solid rgba(215, 180, 90, 0.35);
+        }
+        .if-thumb img {
           width: 100%;
           height: 100%;
           object-fit: cover;
+          cursor: pointer;
+        }
+        .if-cover-badge {
+          position: absolute;
+          bottom: 4px;
+          inset-inline-start: 4px;
+          background: linear-gradient(135deg, #f2d27b, #d7b45a);
+          color: #111;
+          font-size: 10px;
+          font-weight: 800;
+          padding: 1px 6px;
+          border-radius: 999px;
+        }
+        .if-thumb-x {
+          position: absolute;
+          top: 3px;
+          inset-inline-end: 3px;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          border: 0;
+          background: rgba(0, 0, 0, 0.65);
+          color: #fff;
+          cursor: pointer;
+          font-size: 11px;
+          line-height: 1;
+        }
+        .if-addimg {
+          width: 82px;
+          height: 82px;
+          border-radius: 12px;
+          border: 1px dashed rgba(215, 180, 90, 0.5);
+          display: grid;
+          place-items: center;
+          cursor: pointer;
+          color: var(--gold2);
+          font-size: 12px;
+          text-align: center;
+          flex-shrink: 0;
+        }
+        .if-hint {
+          color: var(--muted);
+          font-size: 12px;
+          margin: 0 0 10px;
         }
         .if-fields {
           flex: 1;

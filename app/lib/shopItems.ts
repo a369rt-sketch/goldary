@@ -9,8 +9,9 @@ export const ITEM_KARATS = ["24K", "22K", "21K", "18K"] as const;
 export type ShopItem = {
   id: string;
   shop_id: string;
+  image_url: string | null; // الغلاف (= أول صورة) — للتوافق مع شاشات العرض
+  image_urls: string[] | null; // كل صور القطعة
   name: string;
-  image_url: string | null;
   weight: number | null;
   karat: string | null;
   price: number | null;
@@ -21,7 +22,7 @@ export type ShopItem = {
 
 export type ItemInput = {
   name: string;
-  image_url: string | null;
+  image_urls: string[]; // أول عنصر = الغلاف
   weight: number | null;
   karat: string | null;
   price: number | null;
@@ -60,16 +61,22 @@ export async function getPublishedByShop(shopUserId: string): Promise<ShopItem[]
 }
 
 export async function createItem(shopUserId: string, input: ItemInput) {
-  return supabase
-    .from("shop_items")
-    .insert({ shop_id: shopUserId, ...input, status: "draft" });
+  return supabase.from("shop_items").insert({
+    shop_id: shopUserId,
+    ...input,
+    image_url: input.image_urls[0] ?? null, // الغلاف
+    status: "draft",
+  });
 }
 
 export async function updateItem(id: string, input: Partial<ItemInput>) {
-  return supabase
-    .from("shop_items")
-    .update({ ...input, updated_at: new Date().toISOString() })
-    .eq("id", id);
+  const patch: Record<string, unknown> = {
+    ...input,
+    updated_at: new Date().toISOString(),
+  };
+  // مزامنة الغلاف عند تغيّر الصور
+  if (input.image_urls) patch.image_url = input.image_urls[0] ?? null;
+  return supabase.from("shop_items").update(patch).eq("id", id);
 }
 
 export async function setItemStatus(id: string, status: ShopItemStatus) {

@@ -12,6 +12,66 @@ import { useT } from "@/app/lib/i18n";
 import { getPublishedByShop, type ShopItem } from "@/app/lib/shopItems";
 import ShopGallery from "./ShopGallery";
 
+// بطاقة قطعة بمعرض صور قابل للتبديل
+function PieceCard({ it }: { it: ShopItem }) {
+  const imgs = it.image_urls?.length ? it.image_urls : it.image_url ? [it.image_url] : [];
+  const [active, setActive] = useState(0);
+  const current = imgs[active] ?? null;
+
+  return (
+    <div
+      style={{
+        border: "1px solid rgba(215,180,90,0.2)",
+        borderRadius: 14,
+        overflow: "hidden",
+        background: "rgba(0,0,0,0.2)",
+      }}
+    >
+      {current ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={current} alt={it.name} style={{ width: "100%", height: 160, objectFit: "cover" }} />
+      ) : (
+        <div style={{ height: 160, display: "grid", placeItems: "center", fontSize: 34 }}>💍</div>
+      )}
+
+      {imgs.length > 1 && (
+        <div style={{ display: "flex", gap: 6, padding: "8px 8px 0", flexWrap: "wrap" }}>
+          {imgs.map((u, i) => (
+            <button
+              key={u}
+              type="button"
+              onClick={() => setActive(i)}
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: 8,
+                overflow: "hidden",
+                padding: 0,
+                cursor: "pointer",
+                border:
+                  i === active
+                    ? "2px solid var(--gold2)"
+                    : "1px solid rgba(255,255,255,0.15)",
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={u} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div style={{ padding: "10px 12px" }}>
+        <div style={{ fontWeight: 700, color: "var(--gold2)" }}>{it.name}</div>
+        <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
+          {it.karat ?? "—"} · {it.weight != null ? `${it.weight} غ` : "—"}
+        </div>
+        <div style={{ marginTop: 4 }}>{it.price != null ? fmt(it.price, "IQD") : "—"}</div>
+      </div>
+    </div>
+  );
+}
+
 // معروضات المحل — القطع المنشورة (status='published') فقط
 function ShopShowcase({ ownerId }: { ownerId: string }) {
   const [items, setItems] = useState<ShopItem[]>([]);
@@ -32,35 +92,7 @@ function ShopShowcase({ ownerId }: { ownerId: string }) {
         }}
       >
         {items.map((it) => (
-          <div
-            key={it.id}
-            style={{
-              border: "1px solid rgba(215,180,90,0.2)",
-              borderRadius: 14,
-              overflow: "hidden",
-              background: "rgba(0,0,0,0.2)",
-            }}
-          >
-            {it.image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={it.image_url}
-                alt={it.name}
-                style={{ width: "100%", height: 140, objectFit: "cover" }}
-              />
-            ) : (
-              <div style={{ height: 140, display: "grid", placeItems: "center", fontSize: 34 }}>💍</div>
-            )}
-            <div style={{ padding: "10px 12px" }}>
-              <div style={{ fontWeight: 700, color: "var(--gold2)" }}>{it.name}</div>
-              <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
-                {it.karat ?? "—"} · {it.weight != null ? `${it.weight} غ` : "—"}
-              </div>
-              <div style={{ marginTop: 4 }}>
-                {it.price != null ? fmt(it.price, "IQD") : "—"}
-              </div>
-            </div>
-          </div>
+          <PieceCard key={it.id} it={it} />
         ))}
       </div>
     </div>
