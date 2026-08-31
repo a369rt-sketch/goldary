@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getMyItems,
   createItem,
@@ -485,6 +485,45 @@ function ItemForm({
     setImages((prev) => [url, ...prev.filter((u) => u !== url)]);
   }
 
+  // ترتيب الصور بالسحب (Pointer Events — لمس + ماوس). الأولى = الغلاف.
+  const dragIdx = useRef<number | null>(null);
+  const moved = useRef(false);
+  const [dragging, setDragging] = useState<number | null>(null);
+
+  function reorder(from: number, to: number) {
+    setImages((prev) => {
+      if (from === to || from < 0 || to < 0) return prev;
+      const arr = [...prev];
+      const [x] = arr.splice(from, 1);
+      arr.splice(to, 0, x);
+      return arr;
+    });
+  }
+  function startDrag(e: React.PointerEvent, i: number) {
+    dragIdx.current = i;
+    moved.current = false;
+    setDragging(i);
+  }
+  function onMove(e: React.PointerEvent) {
+    if (dragIdx.current == null) return;
+    moved.current = true;
+    const el = (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)?.closest(
+      "[data-thumb]"
+    ) as HTMLElement | null;
+    if (!el) return;
+    const to = Number(el.dataset.idx);
+    const from = dragIdx.current;
+    if (!Number.isNaN(to) && to !== from) {
+      reorder(from, to);
+      dragIdx.current = to;
+      setDragging(to);
+    }
+  }
+  function endDrag() {
+    dragIdx.current = null;
+    setDragging(null);
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
@@ -502,11 +541,29 @@ function ItemForm({
   return (
     <form className="if" onSubmit={submit}>
       {/* صور متعددة — أول صورة = الغلاف */}
-      <div className="if-images">
+      <div
+        className="if-images"
+        onPointerMove={onMove}
+        onPointerUp={endDrag}
+        onPointerLeave={endDrag}
+      >
         {images.map((url, i) => (
-          <div className="if-thumb" key={url}>
+          <div
+            className={dragging === i ? "if-thumb dragging" : "if-thumb"}
+            key={url}
+            data-thumb
+            data-idx={i}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt="" onClick={() => makeCover(url)} />
+            <img
+              src={url}
+              alt=""
+              draggable={false}
+              onPointerDown={(e) => startDrag(e, i)}
+              onClick={() => {
+                if (!moved.current) makeCover(url);
+              }}
+            />
             {i === 0 && <span className="if-cover-badge">غلاف</span>}
             <button
               type="button"
@@ -531,7 +588,7 @@ function ItemForm({
         </label>
       </div>
       {images.length > 1 && (
-        <p className="if-hint">انقري على صورة لجعلها الغلاف.</p>
+        <p className="if-hint">اسحبي الصور لإعادة ترتيبها · انقري صورة لجعلها الغلاف.</p>
       )}
 
       <div className="if-top">
@@ -604,12 +661,22 @@ function ItemForm({
           border-radius: 12px;
           overflow: hidden;
           border: 1px solid rgba(215, 180, 90, 0.35);
+          transition: transform 0.12s ease, opacity 0.12s ease;
+        }
+        .if-thumb.dragging {
+          opacity: 0.6;
+          transform: scale(1.06);
+          border-color: var(--gold2);
+          z-index: 2;
         }
         .if-thumb img {
           width: 100%;
           height: 100%;
           object-fit: cover;
-          cursor: pointer;
+          cursor: grab;
+          touch-action: none;
+          user-select: none;
+          -webkit-user-drag: none;
         }
         .if-cover-badge {
           position: absolute;
