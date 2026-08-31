@@ -128,6 +128,11 @@ h1 { margin: 10px 0 8px; font-size: 34px; }
 }
 .input:focus { border-color: rgba(215,180,90,0.55); }
 
+/* أداة عامة: إخفاء أزرار الـstepper مع إبقاء type=number لكتابة مباشرة */
+.no-spin::-webkit-outer-spin-button,
+.no-spin::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.no-spin { -moz-appearance: textfield; appearance: textfield; }
+
 .footer { margin-top: 26px; text-align: center; }
 button {
   padding: 12px 28px;

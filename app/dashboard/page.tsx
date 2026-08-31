@@ -759,14 +759,16 @@ export default function DashboardPage() {
                     </label>
                     <input
                       id={`price-${k}`}
-                      className="input"
+                      className="input no-spin"
                       type="number"
+                      inputMode="numeric"
                       min={0}
+                      step="any"
                       dir="ltr"
                       placeholder={
                         latest[k] != null
                           ? `الحالي: ${latest[k]!.toLocaleString()}`
-                          : "لا يوجد سعر بعد"
+                          : "أدخل السعر"
                       }
                       value={priceInputs[k]}
                       onChange={(e) =>
