@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "@/app/lib/i18n";
 
 type Props = {
@@ -21,6 +21,20 @@ export default function ShopGallery({ images, shopName }: Props) {
     () => setIndex((i) => (i === null ? i : (i + 1) % images.length)),
     [images.length]
   );
+
+  // سحب بالإصبع في العرض المكبّر
+  const touchX = useRef<number | null>(null);
+  function onTouchStart(e: React.TouchEvent) {
+    touchX.current = e.changedTouches[0].clientX;
+  }
+  function onTouchEnd(e: React.TouchEvent) {
+    if (touchX.current == null || images.length < 2) return;
+    const dx = e.changedTouches[0].clientX - touchX.current;
+    touchX.current = null;
+    if (Math.abs(dx) < 40) return;
+    if (dx < 0) next();
+    else prev();
+  }
 
   // تنقّل بلوحة المفاتيح أثناء فتح العرض المكبّر
   useEffect(() => {
@@ -88,6 +102,8 @@ export default function ShopGallery({ images, shopName }: Props) {
       {current && (
         <div
           onClick={close}
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
           style={{
             position: "fixed",
             inset: 0,
@@ -97,6 +113,7 @@ export default function ShopGallery({ images, shopName }: Props) {
             justifyContent: "center",
             zIndex: 1000,
             padding: 20,
+            touchAction: "pan-y",
           }}
         >
           <button

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   pricesByKarat,
   type ShopKarat,
@@ -17,6 +17,21 @@ function PieceCard({ it }: { it: ShopItem }) {
   const imgs = it.image_urls?.length ? it.image_urls : it.image_url ? [it.image_url] : [];
   const [active, setActive] = useState(0);
   const current = imgs[active] ?? null;
+  const touchX = useRef<number | null>(null);
+
+  const go = (dir: 1 | -1) =>
+    setActive((a) => (a + dir + imgs.length) % imgs.length);
+
+  function onTouchStart(e: React.TouchEvent) {
+    touchX.current = e.changedTouches[0].clientX;
+  }
+  function onTouchEnd(e: React.TouchEvent) {
+    if (touchX.current == null || imgs.length < 2) return;
+    const dx = e.changedTouches[0].clientX - touchX.current;
+    touchX.current = null;
+    if (Math.abs(dx) < 40) return;
+    go(dx < 0 ? 1 : -1); // سحب لليسار = التالية، لليمين = السابقة
+  }
 
   return (
     <div
@@ -27,12 +42,43 @@ function PieceCard({ it }: { it: ShopItem }) {
         background: "rgba(0,0,0,0.2)",
       }}
     >
-      {current ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={current} alt={it.name} style={{ width: "100%", height: 160, objectFit: "cover" }} />
-      ) : (
-        <div style={{ height: 160, display: "grid", placeItems: "center", fontSize: 34 }}>💍</div>
-      )}
+      <div
+        style={{ position: "relative", touchAction: "pan-y" }}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
+        {current ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={current} alt={it.name} style={{ width: "100%", height: 160, objectFit: "cover", display: "block" }} />
+        ) : (
+          <div style={{ height: 160, display: "grid", placeItems: "center", fontSize: 34 }}>💍</div>
+        )}
+        {imgs.length > 1 && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: 6,
+              left: 0,
+              right: 0,
+              display: "flex",
+              justifyContent: "center",
+              gap: 5,
+            }}
+          >
+            {imgs.map((_, i) => (
+              <span
+                key={i}
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  background: i === active ? "#f2d27b" : "rgba(255,255,255,0.5)",
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       {imgs.length > 1 && (
         <div style={{ display: "flex", gap: 6, padding: "8px 8px 0", flexWrap: "wrap" }}>
