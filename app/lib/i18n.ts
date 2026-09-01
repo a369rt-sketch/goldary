@@ -9,6 +9,7 @@ const DICT = {
     nav_prices: "الأسعار الحالية",
     nav_magazine: "المجلة",
     nav_shops: "المحلات",
+    nav_collection: "المعرض",
     login: "دخول",
     dashboard: "لوحة التحكم",
     logout: "تسجيل الخروج",
@@ -90,6 +91,16 @@ const DICT = {
     close: "إغلاق",
     prev: "السابق",
     next: "التالي",
+
+    // المعرض العام (كل القطع عبر المحلات)
+    col_title: "معرض القطع",
+    col_subtitle: "اكتشفي قطع الذهب المعروضة من كل المحلات — ابحثي بالوسم أو الاسم",
+    col_search_ph: "ابحثي: خاتم، سوار، سلسلة…",
+    col_empty: "لا توجد قطع مطابقة لبحثك",
+    col_none: "لا توجد قطع معروضة بعد",
+    col_count_one: "قطعة",
+    col_count_many: "قطعة",
+    col_in_shop: "في",
 
     // أقسام المجلة و"يؤثر على"
     categories: {
@@ -240,6 +251,7 @@ const DICT = {
     nav_prices: "Live Prices",
     nav_magazine: "Magazine",
     nav_shops: "Shops",
+    nav_collection: "Collection",
     login: "Log in",
     dashboard: "Dashboard",
     logout: "Log out",
@@ -317,6 +329,16 @@ const DICT = {
     close: "Close",
     prev: "Previous",
     next: "Next",
+
+    // Global collection (all pieces across shops)
+    col_title: "Collection",
+    col_subtitle: "Discover gold pieces on display from every shop — search by tag or name",
+    col_search_ph: "Search: ring, bracelet, chain…",
+    col_empty: "No pieces match your search",
+    col_none: "No pieces on display yet",
+    col_count_one: "piece",
+    col_count_many: "pieces",
+    col_in_shop: "at",
 
     categories: {
       news: "News",
