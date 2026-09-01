@@ -126,8 +126,17 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
         </span>
       </div>
       <div className="si-meta">
-        {it.karat ?? "—"} · {it.weight != null ? `${it.weight} غ` : "—"} · {fmt(it.price)}
+        {it.karat ?? "—"} · {it.weight != null ? `${it.weight} غ` : "—"}
       </div>
+      {it.tags && it.tags.length > 0 && (
+        <div className="si-tags">
+          {it.tags.map((tg) => (
+            <span className="si-tag" key={tg}>
+              {tg}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 
@@ -409,6 +418,20 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
           font-size: 13px;
           margin-top: 4px;
         }
+        .si-tags {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 5px;
+          margin-top: 6px;
+        }
+        .si-tag {
+          font-size: 11px;
+          padding: 2px 8px;
+          border-radius: 999px;
+          background: rgba(215, 180, 90, 0.12);
+          border: 1px solid rgba(215, 180, 90, 0.28);
+          color: var(--gold2);
+        }
         .si-actions {
           display: flex;
           gap: 6px;
@@ -457,7 +480,8 @@ function ItemForm({
   const [name, setName] = useState(initial?.name ?? "");
   const [weight, setWeight] = useState(initial?.weight?.toString() ?? "");
   const [karat, setKarat] = useState(initial?.karat ?? "21K");
-  const [price, setPrice] = useState(initial?.price?.toString() ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [tagsText, setTagsText] = useState((initial?.tags ?? []).join("، "));
   const [images, setImages] = useState<string[]>(
     initial?.image_urls?.length ? initial.image_urls : initial?.image_url ? [initial.image_url] : []
   );
@@ -527,13 +551,22 @@ function ItemForm({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
+    const tags = Array.from(
+      new Set(
+        tagsText
+          .split(/[,،]/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+      )
+    );
     setBusy(true);
     await onSave({
       name: name.trim(),
       image_urls: images,
       weight: weight ? Number(weight) : null,
       karat,
-      price: price ? Number(price) : null,
+      description: description.trim() || null,
+      tags,
     });
     setBusy(false);
   }
@@ -618,14 +651,23 @@ function ItemForm({
               ))}
             </select>
           </div>
-          <input
-            className="input no-spin"
-            type="number"
-            inputMode="numeric"
-            placeholder="السعر (د.ع)"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
+          <textarea
+            className="input"
+            placeholder="وصف القطعة (اختياري)"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+            style={{ resize: "vertical" }}
           />
+          <input
+            className="input"
+            placeholder="وسوم للبحث — افصلي بينها بفاصلة: سوار، خاتم، ذهب"
+            value={tagsText}
+            onChange={(e) => setTagsText(e.target.value)}
+          />
+          <p className="if-hint" style={{ margin: 0 }}>
+            الوسوم تساعد الزبائن على إيجاد القطعة بالبحث (قطعة واحدة قد تظهر تحت عدة وسوم).
+          </p>
         </div>
       </div>
       <div className="if-actions">

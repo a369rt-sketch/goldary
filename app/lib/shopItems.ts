@@ -2,6 +2,7 @@
 
 import { supabase } from "@/app/lib/supabaseClient";
 import { authFetch } from "@/app/lib/useAuth";
+import { compressImage } from "@/app/lib/imageCompress";
 
 export type ShopItemStatus = "draft" | "published" | "sold";
 export const ITEM_KARATS = ["24K", "22K", "21K", "18K"] as const;
@@ -12,6 +13,8 @@ export type ShopItem = {
   image_url: string | null; // الغلاف (= أول صورة) — للتوافق مع شاشات العرض
   image_urls: string[] | null; // كل صور القطعة
   name: string;
+  description: string | null;
+  tags: string[] | null;
   weight: number | null;
   karat: string | null;
   price: number | null;
@@ -25,7 +28,8 @@ export type ItemInput = {
   image_urls: string[]; // أول عنصر = الغلاف
   weight: number | null;
   karat: string | null;
-  price: number | null;
+  description: string | null;
+  tags: string[];
 };
 
 // قطع الصائغ نفسه (كل الحالات) — نفلتر بالـshop_id لأن سياسة "public" تُظهر منشورات الآخرين أيضاً
@@ -100,8 +104,9 @@ export async function deleteItem(id: string) {
 
 // رفع صورة قطعة عبر API route (service role) — يتجاوز خطأ Storage RLS 403 على رفع العميل.
 export async function uploadItemImage(file: File): Promise<string | null> {
+  const compressed = await compressImage(file); // تصغير/ضغط قبل الرفع
   const form = new FormData();
-  form.append("file", file);
+  form.append("file", compressed);
   try {
     const res = await authFetch("/api/shop-items/upload", {
       method: "POST",

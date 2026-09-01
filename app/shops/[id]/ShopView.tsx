@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   pricesByKarat,
   type ShopKarat,
@@ -11,26 +11,37 @@ import { fmt } from "@/app/lib/goldPricing";
 import { useT } from "@/app/lib/i18n";
 import { getPublishedByShop, type ShopItem } from "@/app/lib/shopItems";
 import ShopGallery from "./ShopGallery";
+import Lightbox from "./Lightbox";
 
 // بطاقة قطعة بمعرض صور قابل للتبديل
 function PieceCard({ it }: { it: ShopItem }) {
   const imgs = it.image_urls?.length ? it.image_urls : it.image_url ? [it.image_url] : [];
   const [active, setActive] = useState(0);
+  const [lightbox, setLightbox] = useState<number | null>(null);
   const current = imgs[active] ?? null;
   const touchX = useRef<number | null>(null);
+
+  const swiped = useRef(false);
 
   const go = (dir: 1 | -1) =>
     setActive((a) => (a + dir + imgs.length) % imgs.length);
 
   function onTouchStart(e: React.TouchEvent) {
     touchX.current = e.changedTouches[0].clientX;
+    swiped.current = false;
   }
   function onTouchEnd(e: React.TouchEvent) {
     if (touchX.current == null || imgs.length < 2) return;
     const dx = e.changedTouches[0].clientX - touchX.current;
     touchX.current = null;
     if (Math.abs(dx) < 40) return;
+    swiped.current = true; // منع فتح العارض بعد السحب
     go(dx < 0 ? 1 : -1); // سحب لليسار = التالية، لليمين = السابقة
+  }
+
+  function openLightbox() {
+    if (swiped.current) return;
+    if (current) setLightbox(active);
   }
 
   return (
@@ -49,7 +60,12 @@ function PieceCard({ it }: { it: ShopItem }) {
       >
         {current ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={current} alt={it.name} style={{ width: "100%", height: 160, objectFit: "cover", display: "block" }} />
+          <img
+            src={current}
+            alt={it.name}
+            onClick={openLightbox}
+            style={{ width: "100%", height: 160, objectFit: "cover", display: "block", cursor: "zoom-in" }}
+          />
         ) : (
           <div style={{ height: 160, display: "grid", placeItems: "center", fontSize: 34 }}>💍</div>
         )}
@@ -112,8 +128,42 @@ function PieceCard({ it }: { it: ShopItem }) {
         <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
           {it.karat ?? "—"} · {it.weight != null ? `${it.weight} غ` : "—"}
         </div>
-        <div style={{ marginTop: 4 }}>{it.price != null ? fmt(it.price, "IQD") : "—"}</div>
+        {it.description ? (
+          <div className="muted" style={{ fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>
+            {it.description}
+          </div>
+        ) : null}
+        {it.tags && it.tags.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 8 }}>
+            {it.tags.map((tg) => (
+              <span
+                key={tg}
+                style={{
+                  fontSize: 11,
+                  padding: "2px 8px",
+                  borderRadius: 999,
+                  background: "rgba(215,180,90,0.12)",
+                  border: "1px solid rgba(215,180,90,0.28)",
+                  color: "var(--gold2)",
+                }}
+              >
+                {tg}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
+
+      <Lightbox
+        images={imgs}
+        index={lightbox}
+        alt={it.name}
+        onClose={() => setLightbox(null)}
+        onNavigate={(n) => {
+          setLightbox(n);
+          setActive(n);
+        }}
+      />
     </div>
   );
 }
@@ -121,26 +171,50 @@ function PieceCard({ it }: { it: ShopItem }) {
 // معروضات المحل — القطع المنشورة (status='published') فقط
 function ShopShowcase({ ownerId }: { ownerId: string }) {
   const [items, setItems] = useState<ShopItem[]>([]);
+  const [query, setQuery] = useState("");
   useEffect(() => {
     getPublishedByShop(ownerId).then(setItems);
   }, [ownerId]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((it) => {
+      const inName = it.name.toLowerCase().includes(q);
+      const inTags = (it.tags ?? []).some((tg) => tg.toLowerCase().includes(q));
+      return inName || inTags;
+    });
+  }, [items, query]);
 
   if (items.length === 0) return null;
 
   return (
     <div className="card">
       <div className="card-title" style={{ marginBottom: 10 }}>معروضات المحل</div>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
-          gap: 12,
-        }}
-      >
-        {items.map((it) => (
-          <PieceCard key={it.id} it={it} />
-        ))}
-      </div>
+
+      <input
+        className="input"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="ابحثي بالوسم أو الاسم… (مثال: خاتم، سوار)"
+        style={{ width: "100%", marginBottom: 12 }}
+      />
+
+      {filtered.length === 0 ? (
+        <p className="muted">لا توجد قطع مطابقة لبحثك.</p>
+      ) : (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
+            gap: 12,
+          }}
+        >
+          {filtered.map((it) => (
+            <PieceCard key={it.id} it={it} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
