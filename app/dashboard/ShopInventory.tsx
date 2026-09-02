@@ -295,10 +295,16 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
           background: linear-gradient(135deg, #f2d27b, #d7b45a);
           white-space: nowrap;
         }
+        /* نفس شبكة معرض الصور: مربعات صغيرة — 3 بالصف موبايل، 4 ديسكتوب */
         .si-grid {
           display: grid;
-          gap: 12px;
-          grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+          gap: 10px;
+          grid-template-columns: repeat(3, 1fr);
+        }
+        @media (min-width: 768px) {
+          .si-grid {
+            grid-template-columns: repeat(4, 1fr);
+          }
         }
         .si-cell {
           display: flex;
@@ -335,7 +341,7 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
         .si-thumb {
           position: relative;
           width: 100%;
-          height: 120px;
+          aspect-ratio: 1 / 1;
           overflow: hidden;
           border-radius: 12px;
           border: 1px solid rgba(255, 255, 255, 0.14);
