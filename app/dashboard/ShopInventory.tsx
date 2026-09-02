@@ -113,12 +113,13 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
   const saleDate = (iso: string) =>
     new Date(iso).toLocaleDateString("ar-EG", { day: "numeric", month: "long", year: "numeric" });
 
-  // بطاقة قطعة: صورة مصغّرة (تكبّر بالضغط) + وسوم + زر عرض/إخفاء + إجراءات
+  // خلية قطعة بنمط معرض الصور: صورة مصغّرة (تكبّر بالضغط) + زرّا عرض/إخفاء وحذف
   const ItemCard = ({ it }: { it: ShopItem }) => {
     const imgs = it.image_urls?.length ? it.image_urls : it.image_url ? [it.image_url] : [];
     const count = imgs.length;
+    const isPub = it.status === "published";
     return (
-      <div className={it.status === "sold" ? "si-card si-solditem" : "si-card"}>
+      <div className="si-cell">
         <div className="si-thumb" onClick={() => openLightbox(it)} title="اضغطي للتكبير">
           {it.image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -135,78 +136,23 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
           </span>
         </div>
 
-        <div className="si-body">
-          <div className="si-name">{it.name}</div>
-          <div className="si-meta">
-            {it.karat ?? "—"} · {it.weight != null ? `${it.weight} غ` : "—"}
-            {it.status === "sold" ? ` · بيعت ${saleDate(it.updated_at)}` : ""}
-          </div>
-          {it.tags && it.tags.length > 0 && (
-            <div className="si-tags">
-              {it.tags.map((tg) => (
-                <span className="si-tag" key={tg}>
-                  {tg}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* عرض/إخفاء مباشرة من المخزن (toggle publish/unpublish) */}
-          {it.status !== "sold" && (
-            <button
-              type="button"
-              className={it.status === "published" ? "si-toggle si-hide" : "si-toggle si-show"}
-              disabled={busy === it.id}
-              onClick={() => togglePublish(it)}
-            >
-              {busy === it.id
-                ? "…"
-                : it.status === "published"
-                ? "🙈 إخفاء من المعرض"
-                : "👁️ عرض بالمعرض"}
-            </button>
-          )}
-
-          <div className="si-actions">
-            <button
-              type="button"
-              className="si-btn"
-              onClick={() => {
-                setEditing(it);
-                setShowForm(true);
-              }}
-            >
-              تعديل
-            </button>
-            {it.status === "published" && (
-              <button
-                type="button"
-                className="si-btn si-sold"
-                disabled={busy === it.id}
-                onClick={() => changeStatus(it.id, "sold")}
-              >
-                تم البيع
-              </button>
-            )}
-            {it.status === "sold" && (
-              <button
-                type="button"
-                className="si-btn"
-                disabled={busy === it.id}
-                onClick={() => changeStatus(it.id, "draft")}
-              >
-                إرجاع للمخزن
-              </button>
-            )}
-            <button
-              type="button"
-              className="si-btn si-del"
-              disabled={busy === it.id}
-              onClick={() => remove(it.id)}
-            >
-              حذف
-            </button>
-          </div>
+        <div className="si-cellbtns">
+          <button
+            type="button"
+            className={isPub ? "si-toggle si-hide" : "si-toggle si-show"}
+            disabled={busy === it.id}
+            onClick={() => togglePublish(it)}
+          >
+            {busy === it.id ? "…" : isPub ? "🙈 إخفاء من المعرض" : "👁️ عرض بالمعرض"}
+          </button>
+          <button
+            type="button"
+            className="si-cell-del"
+            disabled={busy === it.id}
+            onClick={() => remove(it.id)}
+          >
+            حذف
+          </button>
         </div>
       </div>
     );
@@ -339,7 +285,31 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
         .si-grid {
           display: grid;
           gap: 12px;
-          grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        }
+        .si-cell {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .si-cellbtns {
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+        }
+        .si-cell-del {
+          width: 100%;
+          border: 1px solid rgba(220, 60, 60, 0.4);
+          background: transparent;
+          color: #e66;
+          border-radius: 10px;
+          padding: 7px 10px;
+          font-size: 13px;
+          cursor: pointer;
+        }
+        .si-cell-del:disabled {
+          opacity: 0.6;
+          cursor: default;
         }
         .si-card {
           display: flex;
@@ -354,6 +324,8 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
           width: 100%;
           height: 120px;
           overflow: hidden;
+          border-radius: 12px;
+          border: 1px solid rgba(255, 255, 255, 0.14);
           background: rgba(255, 255, 255, 0.05);
           display: grid;
           place-items: center;
@@ -405,12 +377,12 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
         .si-toggle {
           width: 100%;
           border-radius: 10px;
-          padding: 8px 10px;
+          padding: 7px 6px;
           font-weight: 700;
-          font-size: 13px;
+          font-size: 12px;
+          line-height: 1.25;
           cursor: pointer;
           border: 1px solid transparent;
-          margin-top: 2px;
         }
         .si-toggle:disabled {
           opacity: 0.6;
