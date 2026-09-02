@@ -15,7 +15,7 @@ import {
   type ItemInput,
   type ShopItemStatus,
 } from "@/app/lib/shopItems";
-import Lightbox from "@/app/components/Lightbox";
+import GalleryGrid from "@/app/components/GalleryGrid";
 
 const STATUS_LABEL: Record<ShopItemStatus, string> = {
   draft: "مسودة",
@@ -38,8 +38,6 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
   const [editing, setEditing] = useState<ShopItem | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  // العارض المكبّر (lightbox): صور القطعة المفتوحة + الفهرس الحالي
-  const [lb, setLb] = useState<{ images: string[]; index: number } | null>(null);
 
   const load = useCallback(async () => {
     setItems(await getMyItems(shopUserId));
@@ -94,12 +92,6 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
     else await doPublish(it.id);
   }
 
-  // فتح صور القطعة في العارض المكبّر
-  function openLightbox(it: ShopItem, index = 0) {
-    const imgs = it.image_urls?.length ? it.image_urls : it.image_url ? [it.image_url] : [];
-    if (imgs.length) setLb({ images: imgs, index });
-  }
-
   async function remove(id: string) {
     if (!confirm("حذف هذه القطعة نهائياً؟")) return;
     setBusy(id);
@@ -112,64 +104,6 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
   const totalSales = sold.reduce((s, i) => s + (Number(i.price) || 0), 0);
   const saleDate = (iso: string) =>
     new Date(iso).toLocaleDateString("ar-EG", { day: "numeric", month: "long", year: "numeric" });
-
-  // خلية قطعة بنمط معرض الصور: صورة مصغّرة (تكبّر بالضغط) + زرّا عرض/إخفاء وحذف
-  const ItemCard = ({ it }: { it: ShopItem }) => {
-    const imgs = it.image_urls?.length ? it.image_urls : it.image_url ? [it.image_url] : [];
-    const count = imgs.length;
-    const isPub = it.status === "published";
-    return (
-      <div className="si-cell">
-        <div className="si-thumb" onClick={() => openLightbox(it)} title="اضغطي للتكبير">
-          {it.image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={it.image_url} alt={it.name} />
-          ) : (
-            <span className="si-noimg">💍</span>
-          )}
-          {count > 1 && <span className="si-count">📷 {count}</span>}
-          <span
-            className="si-status"
-            style={{ background: STATUS_COLOR[it.status].bg, color: STATUS_COLOR[it.status].color }}
-          >
-            {STATUS_LABEL[it.status]}
-          </span>
-          <button
-            type="button"
-            className="si-edit"
-            aria-label="تعديل القطعة"
-            title="تعديل"
-            onClick={(e) => {
-              e.stopPropagation();
-              setEditing(it);
-              setShowForm(true);
-            }}
-          >
-            ✏️
-          </button>
-        </div>
-
-        <div className="si-cellbtns">
-          <button
-            type="button"
-            className={isPub ? "si-toggle si-hide" : "si-toggle si-show"}
-            disabled={busy === it.id}
-            onClick={() => togglePublish(it)}
-          >
-            {busy === it.id ? "…" : isPub ? "🙈 إخفاء من المعرض" : "👁️ عرض بالمعرض"}
-          </button>
-          <button
-            type="button"
-            className="si-cell-del"
-            disabled={busy === it.id}
-            onClick={() => remove(it.id)}
-          >
-            حذف
-          </button>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <>
@@ -217,21 +151,53 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
         ) : items.length === 0 ? (
           <p className="muted">لا توجد قطع بعد. أضيفي أول قطعة ✨</p>
         ) : (
-          <div className="si-grid">
-            {items.map((it) => (
-              <ItemCard key={it.id} it={it} />
-            ))}
-          </div>
+          <GalleryGrid
+            cols="3-4"
+            square
+            placeholder="💍"
+            tiles={items.map((it) => {
+              const imgs = it.image_urls?.length
+                ? it.image_urls
+                : it.image_url
+                ? [it.image_url]
+                : [];
+              const isPub = it.status === "published";
+              return {
+                key: it.id,
+                thumb: it.image_url,
+                images: imgs,
+                alt: it.name,
+                count: imgs.length,
+                statusLabel: STATUS_LABEL[it.status],
+                statusStyle: {
+                  background: STATUS_COLOR[it.status].bg,
+                  color: STATUS_COLOR[it.status].color,
+                },
+                onEdit: () => {
+                  setEditing(it);
+                  setShowForm(true);
+                },
+                actions: [
+                  {
+                    key: "toggle",
+                    label: busy === it.id ? "…" : isPub ? "🙈 إخفاء من المعرض" : "👁️ عرض بالمعرض",
+                    variant: (isPub ? "hide" : "show") as "hide" | "show",
+                    disabled: busy === it.id,
+                    onClick: () => togglePublish(it),
+                  },
+                  {
+                    key: "del",
+                    label: "حذف",
+                    variant: "danger" as const,
+                    disabled: busy === it.id,
+                    onClick: () => remove(it.id),
+                  },
+                ],
+              };
+            })}
+          />
         )}
       </section>
-
-      {/* العارض المكبّر للصور */}
-      <Lightbox
-        images={lb?.images ?? []}
-        index={lb ? lb.index : null}
-        onClose={() => setLb(null)}
-        onNavigate={(n) => setLb((s) => (s ? { ...s, index: n } : s))}
-      />
 
       <style jsx>{`
         .si-toast {
