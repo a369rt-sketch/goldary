@@ -15,6 +15,7 @@ import {
   type ItemInput,
   type ShopItemStatus,
 } from "@/app/lib/shopItems";
+import Lightbox from "@/app/components/Lightbox";
 
 const STATUS_LABEL: Record<ShopItemStatus, string> = {
   draft: "مسودة",
@@ -37,6 +38,8 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
   const [editing, setEditing] = useState<ShopItem | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  // العارض المكبّر (lightbox): صور القطعة المفتوحة + الفهرس الحالي
+  const [lb, setLb] = useState<{ images: string[]; index: number } | null>(null);
 
   const load = useCallback(async () => {
     setItems(await getMyItems(shopUserId));
@@ -85,6 +88,18 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
     setBusy(null);
   }
 
+  // تبديل العرض مباشرة من المخزن: منشور ⇄ مسودة
+  async function togglePublish(it: ShopItem) {
+    if (it.status === "published") await doUnpublish(it.id);
+    else await doPublish(it.id);
+  }
+
+  // فتح صور القطعة في العارض المكبّر
+  function openLightbox(it: ShopItem, index = 0) {
+    const imgs = it.image_urls?.length ? it.image_urls : it.image_url ? [it.image_url] : [];
+    if (imgs.length) setLb({ images: imgs, index });
+  }
+
   async function remove(id: string) {
     if (!confirm("حذف هذه القطعة نهائياً؟")) return;
     setBusy(id);
@@ -93,52 +108,109 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
     setBusy(null);
   }
 
-  const published = items.filter((i) => i.status === "published");
   const sold = items.filter((i) => i.status === "sold");
   const totalSales = sold.reduce((s, i) => s + (Number(i.price) || 0), 0);
   const saleDate = (iso: string) =>
     new Date(iso).toLocaleDateString("ar-EG", { day: "numeric", month: "long", year: "numeric" });
 
-  const Thumb = ({ it }: { it: ShopItem }) => {
-    const count = it.image_urls?.length ?? (it.image_url ? 1 : 0);
+  // بطاقة قطعة: صورة مصغّرة (تكبّر بالضغط) + وسوم + زر عرض/إخفاء + إجراءات
+  const ItemCard = ({ it }: { it: ShopItem }) => {
+    const imgs = it.image_urls?.length ? it.image_urls : it.image_url ? [it.image_url] : [];
+    const count = imgs.length;
     return (
-      <div className="si-media">
-        {it.image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={it.image_url} alt={it.name} />
-        ) : (
-          <span className="si-noimg">💍</span>
-        )}
-        {count > 1 && <span className="si-count">📷 {count}</span>}
+      <div className={it.status === "sold" ? "si-card si-solditem" : "si-card"}>
+        <div className="si-thumb" onClick={() => openLightbox(it)} title="اضغطي للتكبير">
+          {it.image_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={it.image_url} alt={it.name} />
+          ) : (
+            <span className="si-noimg">💍</span>
+          )}
+          {count > 1 && <span className="si-count">📷 {count}</span>}
+          <span
+            className="si-status"
+            style={{ background: STATUS_COLOR[it.status].bg, color: STATUS_COLOR[it.status].color }}
+          >
+            {STATUS_LABEL[it.status]}
+          </span>
+        </div>
+
+        <div className="si-body">
+          <div className="si-name">{it.name}</div>
+          <div className="si-meta">
+            {it.karat ?? "—"} · {it.weight != null ? `${it.weight} غ` : "—"}
+            {it.status === "sold" ? ` · بيعت ${saleDate(it.updated_at)}` : ""}
+          </div>
+          {it.tags && it.tags.length > 0 && (
+            <div className="si-tags">
+              {it.tags.map((tg) => (
+                <span className="si-tag" key={tg}>
+                  {tg}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* عرض/إخفاء مباشرة من المخزن (toggle publish/unpublish) */}
+          {it.status !== "sold" && (
+            <button
+              type="button"
+              className={it.status === "published" ? "si-toggle si-hide" : "si-toggle si-show"}
+              disabled={busy === it.id}
+              onClick={() => togglePublish(it)}
+            >
+              {busy === it.id
+                ? "…"
+                : it.status === "published"
+                ? "🙈 إخفاء من المعرض"
+                : "👁️ عرض بالمعرض"}
+            </button>
+          )}
+
+          <div className="si-actions">
+            <button
+              type="button"
+              className="si-btn"
+              onClick={() => {
+                setEditing(it);
+                setShowForm(true);
+              }}
+            >
+              تعديل
+            </button>
+            {it.status === "published" && (
+              <button
+                type="button"
+                className="si-btn si-sold"
+                disabled={busy === it.id}
+                onClick={() => changeStatus(it.id, "sold")}
+              >
+                تم البيع
+              </button>
+            )}
+            {it.status === "sold" && (
+              <button
+                type="button"
+                className="si-btn"
+                disabled={busy === it.id}
+                onClick={() => changeStatus(it.id, "draft")}
+              >
+                إرجاع للمخزن
+              </button>
+            )}
+            <button
+              type="button"
+              className="si-btn si-del"
+              disabled={busy === it.id}
+              onClick={() => remove(it.id)}
+            >
+              حذف
+            </button>
+          </div>
+        </div>
       </div>
     );
   };
-
-  const Info = ({ it }: { it: ShopItem }) => (
-    <div className="si-info">
-      <div className="si-name">
-        {it.name}
-        <span
-          className="si-badge"
-          style={{ background: STATUS_COLOR[it.status].bg, color: STATUS_COLOR[it.status].color }}
-        >
-          {STATUS_LABEL[it.status]}
-        </span>
-      </div>
-      <div className="si-meta">
-        {it.karat ?? "—"} · {it.weight != null ? `${it.weight} غ` : "—"}
-      </div>
-      {it.tags && it.tags.length > 0 && (
-        <div className="si-tags">
-          {it.tags.map((tg) => (
-            <span className="si-tag" key={tg}>
-              {tg}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 
   return (
     <>
@@ -188,107 +260,19 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
         ) : (
           <div className="si-grid">
             {items.map((it) => (
-              <div className="si-item" key={it.id}>
-                <Thumb it={it} />
-                <Info it={it} />
-                <div className="si-actions">
-                  <button
-                    className="si-btn"
-                    onClick={() => {
-                      setEditing(it);
-                      setShowForm(true);
-                    }}
-                  >
-                    تعديل
-                  </button>
-                  {it.status === "draft" && (
-                    <button
-                      className="si-btn si-pub"
-                      disabled={busy === it.id}
-                      onClick={() => doPublish(it.id)}
-                    >
-                      نشر للعرض العام
-                    </button>
-                  )}
-                  <button
-                    className="si-btn si-del"
-                    disabled={busy === it.id}
-                    onClick={() => remove(it.id)}
-                  >
-                    حذف
-                  </button>
-                </div>
-              </div>
+              <ItemCard key={it.id} it={it} />
             ))}
           </div>
         )}
       </section>
 
-      {/* قسم ب: المعروض حالياً */}
-      <section className="si card">
-        <div className="card-title" style={{ marginBottom: 12 }}>
-          المعروض حالياً ({published.length})
-        </div>
-        {published.length === 0 ? (
-          <p className="muted">لا توجد قطع معروضة. انشري قطعة من مخزونك.</p>
-        ) : (
-          <div className="si-grid">
-            {published.map((it) => (
-              <div className="si-item" key={it.id}>
-                <Thumb it={it} />
-                <Info it={it} />
-                <div className="si-actions">
-                  <button
-                    className="si-btn"
-                    disabled={busy === it.id}
-                    onClick={() => doUnpublish(it.id)}
-                  >
-                    إلغاء النشر
-                  </button>
-                  <button
-                    className="si-btn si-sold"
-                    disabled={busy === it.id}
-                    onClick={() => changeStatus(it.id, "sold")}
-                  >
-                    تم البيع
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* قسم المبيعات */}
-      {sold.length > 0 && (
-        <section className="si card">
-          <div className="card-title" style={{ marginBottom: 12 }}>
-            المبيعات ({sold.length}) — {fmt(totalSales)}
-          </div>
-          <div className="si-grid">
-            {sold.map((it) => (
-              <div className="si-item si-solditem" key={it.id}>
-                <Thumb it={it} />
-                <div className="si-info">
-                  <div className="si-name">{it.name}</div>
-                  <div className="si-meta">
-                    {it.karat ?? "—"} · {fmt(it.price)} · بيعت {saleDate(it.updated_at)}
-                  </div>
-                </div>
-                <div className="si-actions">
-                  <button
-                    className="si-btn"
-                    disabled={busy === it.id}
-                    onClick={() => changeStatus(it.id, "draft")}
-                  >
-                    إرجاع للمخزن
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      {/* العارض المكبّر للصور */}
+      <Lightbox
+        images={lb?.images ?? []}
+        index={lb ? lb.index : null}
+        onClose={() => setLb(null)}
+        onNavigate={(n) => setLb((s) => (s ? { ...s, index: n } : s))}
+      />
 
       <style jsx>{`
         .si-toast {
@@ -355,68 +339,92 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
         .si-grid {
           display: grid;
           gap: 12px;
+          grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
         }
-        .si-item {
+        .si-card {
           display: flex;
-          gap: 12px;
-          align-items: center;
+          flex-direction: column;
           background: rgba(0, 0, 0, 0.22);
           border: 1px solid rgba(215, 180, 90, 0.18);
           border-radius: 14px;
-          padding: 10px;
-          flex-wrap: wrap;
-        }
-        .si-media {
-          position: relative;
-          width: 60px;
-          height: 60px;
-          border-radius: 10px;
           overflow: hidden;
-          flex-shrink: 0;
+        }
+        .si-thumb {
+          position: relative;
+          width: 100%;
+          aspect-ratio: 1 / 1;
+          overflow: hidden;
           background: rgba(255, 255, 255, 0.05);
           display: grid;
           place-items: center;
+          cursor: zoom-in;
         }
-        .si-count {
-          position: absolute;
-          bottom: 2px;
-          inset-inline-end: 2px;
-          background: rgba(0, 0, 0, 0.7);
-          color: #fff;
-          font-size: 10px;
-          padding: 1px 5px;
-          border-radius: 999px;
-        }
-        .si-media img {
+        .si-thumb img {
           width: 100%;
           height: 100%;
           object-fit: cover;
+          display: block;
         }
-        .si-noimg {
-          font-size: 24px;
+        .si-count {
+          position: absolute;
+          bottom: 6px;
+          inset-inline-end: 6px;
+          background: rgba(0, 0, 0, 0.7);
+          color: #fff;
+          font-size: 11px;
+          padding: 2px 7px;
+          border-radius: 999px;
         }
-        .si-info {
-          flex: 1;
-          min-width: 140px;
-        }
-        .si-name {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          flex-wrap: wrap;
-          font-weight: 700;
-          color: var(--gold2);
-        }
-        .si-badge {
+        .si-status {
+          position: absolute;
+          top: 6px;
+          inset-inline-start: 6px;
           font-size: 11px;
           padding: 2px 8px;
           border-radius: 999px;
-          font-weight: 600;
+          font-weight: 700;
+        }
+        .si-noimg {
+          font-size: 34px;
+        }
+        .si-body {
+          padding: 10px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .si-name {
+          font-weight: 700;
+          color: var(--gold2);
+          font-size: 14px;
         }
         .si-meta {
           color: var(--muted);
+          font-size: 12px;
+        }
+        .si-toggle {
+          width: 100%;
+          border-radius: 10px;
+          padding: 8px 10px;
+          font-weight: 700;
           font-size: 13px;
-          margin-top: 4px;
+          cursor: pointer;
+          border: 1px solid transparent;
+          margin-top: 2px;
+        }
+        .si-toggle:disabled {
+          opacity: 0.6;
+          cursor: default;
+        }
+        .si-toggle.si-show {
+          background: rgba(60, 180, 90, 0.15);
+          color: #43c66a;
+          border-color: rgba(60, 180, 90, 0.45);
+        }
+        .si-toggle.si-hide {
+          background: rgba(255, 255, 255, 0.06);
+          color: var(--muted);
+          border-color: rgba(255, 255, 255, 0.2);
         }
         .si-tags {
           display: flex;
@@ -438,21 +446,19 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
           flex-wrap: wrap;
         }
         .si-btn {
+          flex: 1;
+          min-width: 60px;
+          text-align: center;
           border: 1px solid rgba(215, 180, 90, 0.35);
           background: transparent;
           color: var(--gold2);
           border-radius: 10px;
-          padding: 7px 12px;
+          padding: 7px 10px;
           font-size: 13px;
           cursor: pointer;
         }
         .si-btn:disabled {
           opacity: 0.5;
-        }
-        .si-pub {
-          background: rgba(60, 180, 90, 0.15);
-          color: #43c66a;
-          border-color: rgba(60, 180, 90, 0.4);
         }
         .si-sold {
           background: rgba(215, 180, 90, 0.15);
