@@ -38,9 +38,8 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
 // حالة المحل (نفس قيم لوحة الأدمن)
 type ShopStatus = "pending" | "approved" | "rejected" | "hidden";
 
-// نوع المحل مع مصفوفة صور المعرض + الحالة (غير موجودة بنوع Shop الأساسي)
+// نوع المحل مع العيارات + الحالة (غير موجودة بنوع Shop الأساسي)
 type ShopRow = Shop & {
-  gallery_urls: string[] | null;
   karats: string[] | null;
   status: ShopStatus | null;
 };
