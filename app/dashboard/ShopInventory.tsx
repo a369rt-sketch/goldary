@@ -339,7 +339,7 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
         .si-grid {
           display: grid;
           gap: 12px;
-          grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
         }
         .si-card {
           display: flex;
@@ -352,7 +352,7 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
         .si-thumb {
           position: relative;
           width: 100%;
-          aspect-ratio: 1 / 1;
+          height: 120px;
           overflow: hidden;
           background: rgba(255, 255, 255, 0.05);
           display: grid;
