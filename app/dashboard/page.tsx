@@ -60,13 +60,6 @@ function extFromMime(type: string): string {
   return "jpg";
 }
 
-// استخراج مسار التخزين من الرابط العام (للحذف)
-function storagePathFromUrl(url: string): string | null {
-  const marker = `/${BUCKET}/`;
-  const idx = url.indexOf(marker);
-  return idx >= 0 ? url.slice(idx + marker.length) : null;
-}
-
 export default function DashboardPage() {
   const router = useRouter();
 
@@ -109,11 +102,6 @@ export default function DashboardPage() {
   const [logoUploading, setLogoUploading] = useState(false);
   const [logoMsg, setLogoMsg] = useState("");
   const [logoErr, setLogoErr] = useState("");
-
-  // المعرض
-  const [galleryBusy, setGalleryBusy] = useState(false);
-  const [galleryMsg, setGalleryMsg] = useState("");
-  const [galleryErr, setGalleryErr] = useState("");
 
   // جلب آخر سعر لكل عيار (نموذج append: آخر سطر هو الحالي)
   async function loadPrices(shopId: string) {
@@ -367,104 +355,6 @@ export default function DashboardPage() {
 
     setShop({ ...shop, logo_url });
     setLogoMsg("تم تحديث الشعار");
-  }
-
-  // رفع صور متعددة للمعرض
-  async function onGalleryChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? []);
-    e.target.value = "";
-    if (files.length === 0 || !shop) return;
-
-    setGalleryMsg("");
-    setGalleryErr("");
-
-    for (const f of files) {
-      const invalid = validateImage(f);
-      if (invalid) {
-        setGalleryErr(invalid);
-        return;
-      }
-    }
-
-    setGalleryBusy(true);
-    const stamp = Date.now();
-    const urls: string[] = [];
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const path = `${shop.id}/gallery-${stamp}-${i}.${extFromMime(file.type)}`;
-      console.log("Gallery upload → bucket:", BUCKET, "| shop.id:", shop.id, "| path:", path);
-
-      const { error: upErr } = await supabase.storage
-        .from(BUCKET)
-        .upload(path, file, { upsert: true, contentType: file.type });
-
-      if (upErr) {
-        setGalleryBusy(false);
-        console.error("Gallery upload failed:", upErr.message);
-        setGalleryErr(upErr.message);
-        return;
-      }
-
-      const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
-      urls.push(pub.publicUrl);
-    }
-
-    const updated = [...(shop.gallery_urls ?? []), ...urls];
-
-    const { error: dbErr } = await supabase
-      .from("shops")
-      .update({ gallery_urls: updated })
-      .eq("id", shop.id)
-      .eq("owner_id", userId);
-
-    setGalleryBusy(false);
-
-    if (dbErr) {
-      console.error("Gallery save failed:", dbErr.message);
-      setGalleryErr(dbErr.message);
-      return;
-    }
-
-    setShop({ ...shop, gallery_urls: updated });
-    setGalleryMsg("تم رفع الصور");
-  }
-
-  // حذف صورة من المعرض (Storage + المصفوفة)
-  async function deleteGalleryImage(url: string) {
-    if (!shop) return;
-
-    setGalleryMsg("");
-    setGalleryErr("");
-    setGalleryBusy(true);
-
-    const path = storagePathFromUrl(url);
-    if (path) {
-      const { error: rmErr } = await supabase.storage.from(BUCKET).remove([path]);
-      if (rmErr) {
-        setGalleryBusy(false);
-        setGalleryErr("تعذّر حذف الصورة، حاول مرة أخرى");
-        return;
-      }
-    }
-
-    const updated = (shop.gallery_urls ?? []).filter((u) => u !== url);
-
-    const { error: dbErr } = await supabase
-      .from("shops")
-      .update({ gallery_urls: updated })
-      .eq("id", shop.id)
-      .eq("owner_id", userId);
-
-    setGalleryBusy(false);
-
-    if (dbErr) {
-      setGalleryErr("تعذّر تحديث المعرض، حاول مرة أخرى");
-      return;
-    }
-
-    setShop({ ...shop, gallery_urls: updated });
-    setGalleryMsg("تم حذف الصورة");
   }
 
   async function logout() {
@@ -849,87 +739,6 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* معرض الصور */}
-          <div className="card" style={{ maxWidth: 520, marginTop: 18 }}>
-            <div className="row-between" style={{ marginBottom: 12 }}>
-              <div className="card-title">معرض الصور</div>
-              <label
-                className="btn-primary small-btn"
-                style={{
-                  cursor: galleryBusy ? "default" : "pointer",
-                  opacity: galleryBusy ? 0.6 : 1,
-                }}
-              >
-                {galleryBusy ? "جارٍ الرفع…" : "رفع صور"}
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  hidden
-                  disabled={galleryBusy}
-                  onChange={onGalleryChange}
-                />
-              </label>
-            </div>
-
-            {(shop.gallery_urls ?? []).length === 0 ? (
-              <p className="muted small" style={{ margin: 0 }}>لا توجد صور بعد</p>
-            ) : (
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))",
-                  gap: 10,
-                }}
-              >
-                {(shop.gallery_urls ?? []).map((url) => (
-                  <div key={url} style={{ position: "relative" }}>
-                    <img
-                      src={url}
-                      alt="صورة من المعرض"
-                      style={{
-                        width: "100%",
-                        height: 90,
-                        objectFit: "cover",
-                        borderRadius: 10,
-                        border: "1px solid rgba(255,255,255,0.14)",
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => deleteGalleryImage(url)}
-                      disabled={galleryBusy}
-                      title="حذف الصورة"
-                      style={{
-                        position: "absolute",
-                        top: 4,
-                        right: 4,
-                        width: 24,
-                        height: 24,
-                        padding: 0,
-                        borderRadius: "50%",
-                        background: "rgba(0,0,0,0.6)",
-                        color: "#ff6b6b",
-                        border: "1px solid rgba(255,107,107,0.6)",
-                        cursor: galleryBusy ? "default" : "pointer",
-                        fontSize: 12,
-                        lineHeight: 1,
-                      }}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {galleryErr && <p className="error" style={{ marginTop: 12 }}>{galleryErr}</p>}
-            {galleryMsg && (
-              <p className="small" style={{ marginTop: 12, color: "#86efac" }}>
-                {galleryMsg}
-              </p>
-            )}
-          </div>
         </>
       )}
     </main>

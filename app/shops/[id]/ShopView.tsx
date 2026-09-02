@@ -10,7 +10,6 @@ import { provinces } from "@/app/lib/provinces";
 import { fmt } from "@/app/lib/goldPricing";
 import { useT } from "@/app/lib/i18n";
 import { getPublishedByShop, type ShopItem } from "@/app/lib/shopItems";
-import ShopGallery from "./ShopGallery";
 import PieceCard from "@/app/components/PieceCard";
 
 // معروضات المحل — القطع المنشورة (status='published') فقط
@@ -85,8 +84,6 @@ export default function ShopView({ shop }: { shop: ShopWithPrices }) {
   const { t } = useT();
   const map = pricesByKarat(shop.prices);
 
-  const gallery =
-    (shop as { gallery_urls?: string[] | null }).gallery_urls ?? [];
   const karats = (shop as { karats?: string[] | null }).karats ?? [];
 
   const displayKarats =
@@ -163,8 +160,6 @@ export default function ShopView({ shop }: { shop: ShopWithPrices }) {
       {(shop as { owner_id?: string }).owner_id ? (
         <ShopShowcase ownerId={(shop as { owner_id?: string }).owner_id as string} />
       ) : null}
-
-      <ShopGallery images={gallery} shopName={shop.name} />
     </main>
   );
 }
