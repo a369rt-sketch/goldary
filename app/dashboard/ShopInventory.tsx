@@ -134,6 +134,19 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
           >
             {STATUS_LABEL[it.status]}
           </span>
+          <button
+            type="button"
+            className="si-edit"
+            aria-label="تعديل القطعة"
+            title="تعديل"
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditing(it);
+              setShowForm(true);
+            }}
+          >
+            ✏️
+          </button>
         </div>
 
         <div className="si-cellbtns">
@@ -355,6 +368,26 @@ export default function ShopInventory({ shopUserId }: { shopUserId: string }) {
           padding: 2px 8px;
           border-radius: 999px;
           font-weight: 700;
+        }
+        .si-edit {
+          position: absolute;
+          top: 6px;
+          inset-inline-end: 6px;
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          border: 1px solid rgba(215, 180, 90, 0.5);
+          background: rgba(0, 0, 0, 0.6);
+          color: #f2d27b;
+          font-size: 13px;
+          line-height: 1;
+          cursor: pointer;
+          display: grid;
+          place-items: center;
+          padding: 0;
+        }
+        .si-edit:hover {
+          background: rgba(0, 0, 0, 0.8);
         }
         .si-noimg {
           font-size: 34px;
