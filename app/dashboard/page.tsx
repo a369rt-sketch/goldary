@@ -12,6 +12,7 @@ import {
 import { provinces } from "@/app/lib/provinces";
 import ShopInventory from "./ShopInventory";
 import ShopInvoices from "./ShopInvoices";
+import ShopReports from "./ShopReports";
 
 // مسار تسجيل الدخول (موجود بالمشروع) — عدّله من هنا لو تغيّر
 const LOGIN_PATH = "/owner/login";
@@ -496,6 +497,9 @@ export default function DashboardPage() {
               }}
             />
           )}
+
+          {/* التقارير والمبيعات */}
+          {userId && <ShopReports shopUserId={userId} />}
 
           {/* معلومات المحل */}
           <form className="card" style={{ maxWidth: 520 }} onSubmit={saveInfo}>
