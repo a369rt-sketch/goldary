@@ -11,6 +11,7 @@ import {
 } from "@/app/lib/shops";
 import { provinces } from "@/app/lib/provinces";
 import ShopInventory from "./ShopInventory";
+import ShopInvoices from "./ShopInvoices";
 
 // مسار تسجيل الدخول (موجود بالمشروع) — عدّله من هنا لو تغيّر
 const LOGIN_PATH = "/owner/login";
@@ -482,6 +483,19 @@ export default function DashboardPage() {
         <>
           {/* مخزن الصائغ */}
           {userId && <ShopInventory shopUserId={userId} />}
+
+          {/* الفواتير */}
+          {userId && (
+            <ShopInvoices
+              shopUserId={userId}
+              shop={{
+                name: shop.name,
+                phone: shop.phone,
+                province: shop.province,
+                logo_url: shop.logo_url,
+              }}
+            />
+          )}
 
           {/* معلومات المحل */}
           <form className="card" style={{ maxWidth: 520 }} onSubmit={saveInfo}>
