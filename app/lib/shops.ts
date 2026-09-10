@@ -31,11 +31,12 @@ export type ShopWithPrices = Shop & {
   prices: ShopPrice[];
 };
 
-// كل المحلات
+// كل المحلات (العرض العام = المعتمدة فقط)
 export async function getShops(): Promise<Shop[]> {
   const { data, error } = await supabase
     .from("shops")
     .select("*")
+    .eq("status", "approved")
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -52,6 +53,7 @@ export async function getShopsByProvince(province: string): Promise<Shop[]> {
     .from("shops")
     .select("*")
     .eq("province", province)
+    .eq("status", "approved")
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -67,6 +69,7 @@ export async function getShopsWithPrices(): Promise<ShopWithPrices[]> {
   const { data, error } = await supabase
     .from("shops")
     .select("*, shop_prices(*)")
+    .eq("status", "approved")
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -103,7 +106,8 @@ export async function getShopWithPrices(
     .from("shops")
     .select("*, shop_prices(*)")
     .eq("id", shopId)
-    .single();
+    .eq("status", "approved") // العرض العام: صفحة محل غير معتمد → 404
+    .maybeSingle();
 
   if (error) {
     console.error("Shop fetch failed:", error);

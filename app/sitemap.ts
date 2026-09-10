@@ -24,7 +24,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // روابط المحلات — تفشل بأمان
   try {
-    const { data } = await supabase.from("shops").select("id");
+    const { data } = await supabase
+      .from("shops")
+      .select("id")
+      .eq("status", "approved");
     for (const s of data ?? []) {
       dynamic.push({
         url: `${BASE}/shops/${s.id}`,
