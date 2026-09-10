@@ -150,3 +150,54 @@ export async function createInvoice(
 export async function voidInvoice(id: string) {
   return supabase.from("invoices").update({ status: "void" }).eq("id", id);
 }
+
+// حركة مخزون مشتقّة من بنود الفواتير (بيع=خروج، شراء=دخول) — الملغاة مستبعدة
+export type StockMovement = {
+  id: string;
+  direction: "in" | "out";
+  reason: InvoiceType;
+  description: string;
+  weight: number | null;
+  karat: string | null;
+  quantity: number;
+  invoiceNumber: number;
+  createdAt: string;
+};
+
+export async function getStockMovements(shopUserId: string): Promise<StockMovement[]> {
+  // RLS يقصر invoice_items على المالك؛ نضمّن الفاتورة للحصول على النوع/الرقم/التاريخ
+  const { data } = await supabase
+    .from("invoice_items")
+    .select(
+      "id, description, weight, karat, quantity, invoice:invoices!inner(number, type, status, shop_id, created_at)"
+    );
+  type Row = {
+    id: string;
+    description: string;
+    weight: number | null;
+    karat: string | null;
+    quantity: number;
+    invoice: { number: number; type: InvoiceType; status: InvoiceStatus; shop_id: string; created_at: string };
+  };
+  const rows = (data as unknown as Row[]) ?? [];
+  return rows
+    .filter(
+      (r) =>
+        r.invoice &&
+        r.invoice.shop_id === shopUserId &&
+        r.invoice.status === "issued" &&
+        (r.invoice.type === "sale" || r.invoice.type === "purchase")
+    )
+    .map((r) => ({
+      id: r.id,
+      direction: r.invoice.type === "sale" ? ("out" as const) : ("in" as const),
+      reason: r.invoice.type,
+      description: r.description,
+      weight: r.weight,
+      karat: r.karat,
+      quantity: r.quantity,
+      invoiceNumber: r.invoice.number,
+      createdAt: r.invoice.created_at,
+    }))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
