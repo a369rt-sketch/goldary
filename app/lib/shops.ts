@@ -15,6 +15,8 @@ export type Shop = {
   status?: string | null; // pending | approved | rejected | hidden
   owner_id?: string | null;
   karats?: string[] | null;
+  plan?: string | null; // free | pro
+  plan_expires_at?: string | null;
 };
 
 // جدول shop_prices

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/supabaseClient";
 import { type Shop } from "@/app/lib/shops";
+import { setShopPlan, isPro } from "@/app/lib/subscription";
 import { provinces } from "@/app/lib/provinces";
 
 // مسار تسجيل الدخول (موجود بالمشروع) — عدّله من هنا لو تغيّر
@@ -114,6 +115,28 @@ export default function AdminShopsPage() {
       prev.map((s) => (s.id === shop.id ? { ...s, status } : s))
     );
     setMsg(`${verb} "${shop.name}"`);
+  }
+
+  // تفعيل/إلغاء اشتراك Pro عبر مسار الأدمن (service role)
+  async function setPlan(shop: ShopRow, action: "month" | "year" | "free") {
+    setMsg("");
+    setErr("");
+    setBusyId(shop.id);
+    const res = await setShopPlan(shop.id, action);
+    setBusyId(null);
+    if (!res.ok) {
+      setErr("تعذّر تحديث الاشتراك، حاول مرة أخرى");
+      return;
+    }
+    const { shop: updated } = await res.json();
+    setShops((prev) =>
+      prev.map((s) =>
+        s.id === shop.id
+          ? { ...s, plan: updated.plan, plan_expires_at: updated.plan_expires_at }
+          : s
+      )
+    );
+    setMsg(`تم تحديث اشتراك "${shop.name}"`);
   }
 
   // حذف نهائي من جدول shops
@@ -313,6 +336,66 @@ export default function AdminShopsPage() {
                           {busy ? "…" : "حذف نهائي"}
                         </button>
                       </div>
+
+                      {shop.status === "approved" && (
+                        <div
+                          className="tiny"
+                          style={{
+                            marginTop: 12,
+                            borderTop: "1px solid var(--stroke)",
+                            paddingTop: 10,
+                          }}
+                        >
+                          <div className="row-between" style={{ marginBottom: 8 }}>
+                            <span className="muted">الاشتراك</span>
+                            <span
+                              style={{
+                                fontWeight: 800,
+                                color: isPro(shop) ? "#f2d27b" : "var(--muted)",
+                              }}
+                            >
+                              {isPro(shop) ? "Pro" : "مجاني"}
+                              {isPro(shop) && shop.plan_expires_at
+                                ? ` · حتى ${new Date(shop.plan_expires_at).toLocaleDateString(
+                                    "ar-EG",
+                                    { day: "numeric", month: "short", year: "numeric" }
+                                  )}`
+                                : ""}
+                            </span>
+                          </div>
+                          <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                            <button
+                              type="button"
+                              className="btn-secondary small-btn"
+                              disabled={busy}
+                              onClick={() => setPlan(shop, "month")}
+                            >
+                              ＋ شهر Pro
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-secondary small-btn"
+                              disabled={busy}
+                              onClick={() => setPlan(shop, "year")}
+                            >
+                              ＋ سنة Pro
+                            </button>
+                            <button
+                              type="button"
+                              className="small-btn"
+                              disabled={busy}
+                              onClick={() => setPlan(shop, "free")}
+                              style={{
+                                background: "transparent",
+                                color: "var(--muted)",
+                                border: "1px solid var(--stroke)",
+                              }}
+                            >
+                              مجاني
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

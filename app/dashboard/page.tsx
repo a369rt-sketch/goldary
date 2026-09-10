@@ -14,6 +14,8 @@ import ShopInventory from "./ShopInventory";
 import ShopInvoices from "./ShopInvoices";
 import ShopReports from "./ShopReports";
 import ShopStock from "./ShopStock";
+import SubscriptionCard from "./SubscriptionCard";
+import { isPro } from "@/app/lib/subscription";
 
 // مسار تسجيل الدخول (موجود بالمشروع) — عدّله من هنا لو تغيّر
 const LOGIN_PATH = "/owner/login";
@@ -483,27 +485,33 @@ export default function DashboardPage() {
       ) : (
         /* 3) معتمد (وأي حالة أخرى مثل hidden/legacy) — واجهة إدارة المحل */
         <>
-          {/* مخزن الصائغ */}
+          {/* مخزن الصائغ (عرض المنتجات — مجاني) */}
           {userId && <ShopInventory shopUserId={userId} />}
 
-          {/* الفواتير */}
-          {userId && (
-            <ShopInvoices
-              shopUserId={userId}
-              shop={{
-                name: shop.name,
-                phone: shop.phone,
-                province: shop.province,
-                logo_url: shop.logo_url,
-              }}
-            />
+          {/* حالة الاشتراك */}
+          <SubscriptionCard plan={shop.plan} expiresAt={shop.plan_expires_at} />
+
+          {/* الأدوات الاحترافية — للمشتركين Pro فقط */}
+          {userId && isPro(shop) && (
+            <>
+              {/* الفواتير */}
+              <ShopInvoices
+                shopUserId={userId}
+                shop={{
+                  name: shop.name,
+                  phone: shop.phone,
+                  province: shop.province,
+                  logo_url: shop.logo_url,
+                }}
+              />
+
+              {/* التقارير والمبيعات */}
+              <ShopReports shopUserId={userId} />
+
+              {/* تتبّع المخزون */}
+              <ShopStock shopUserId={userId} />
+            </>
           )}
-
-          {/* التقارير والمبيعات */}
-          {userId && <ShopReports shopUserId={userId} />}
-
-          {/* تتبّع المخزون */}
-          {userId && <ShopStock shopUserId={userId} />}
 
           {/* معلومات المحل */}
           <form className="card" style={{ maxWidth: 520 }} onSubmit={saveInfo}>
