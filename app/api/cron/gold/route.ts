@@ -17,37 +17,52 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
-  // 2) المتغيّرات المطلوبة
-  const apiKey = process.env.UNIRATE_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ ok: false, error: "missing env" }, { status: 500 });
-  }
+  // 2) سحب سعر الأونصة (XAU/USD) — goldapi.io أساسي، ثم مصدر مجاني احتياطي
+  //     (UniRate أُلغي: باقته المجانية لم تعد تعطي المعادن الثمينة)
+  let ounceUsd = NaN;
+  let priceSource = "";
 
-  // 3) السحب من UniRate (api_key كـ query param، الحقل rate)
-  let ounceUsd: number;
-  try {
-    const url =
-      "https://api.unirateapi.com/api/commodities/rates" +
-      `?from=USD&to=XAU&api_key=${encodeURIComponent(apiKey)}`;
-
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) {
-      return NextResponse.json(
-        { ok: false, error: `unirate http ${res.status}` },
-        { status: 502 }
-      );
+  const goldApiKey = process.env.GOLD_API_KEY;
+  if (goldApiKey) {
+    try {
+      const r = await fetch("https://www.goldapi.io/api/XAU/USD", {
+        headers: { "x-access-token": goldApiKey, "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      if (r.ok) {
+        const v = Number((await r.json())?.price);
+        if (Number.isFinite(v) && v > 0) {
+          ounceUsd = v;
+          priceSource = "goldapi.io";
+        }
+      }
+    } catch (err) {
+      console.error("goldapi.io fetch failed:", err);
     }
-
-    const json = await res.json();
-    ounceUsd = Number(json?.rate);
-  } catch (err) {
-    console.error("UniRate fetch failed:", err);
-    return NextResponse.json({ ok: false, error: "fetch failed" }, { status: 502 });
   }
 
-  // fallback: rate غير صالح → لا نكتب صفاً، نترك آخر صف صالح
+  // مصدر مجاني احتياطي بلا مفتاح
   if (!Number.isFinite(ounceUsd) || ounceUsd <= 0) {
-    return NextResponse.json({ ok: false, error: "invalid rate" }, { status: 502 });
+    try {
+      const r = await fetch("https://api.gold-api.com/price/XAU", { cache: "no-store" });
+      if (r.ok) {
+        const v = Number((await r.json())?.price);
+        if (Number.isFinite(v) && v > 0) {
+          ounceUsd = v;
+          priceSource = "gold-api.com";
+        }
+      }
+    } catch (err) {
+      console.error("gold-api.com fetch failed:", err);
+    }
+  }
+
+  // فشل كل المصادر → لا نكتب صفاً، نترك آخر صف صالح
+  if (!Number.isFinite(ounceUsd) || ounceUsd <= 0) {
+    return NextResponse.json(
+      { ok: false, error: "all price sources failed" },
+      { status: 502 }
+    );
   }
 
   // 4) قراءة سعر الدولار من dollar_rate (آخر صف) — تُستعمل كما هي بدون تحويل
@@ -100,6 +115,7 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     ok: true,
+    source: priceSource,
     ounceUsd,
     buy_gram_iqd: Math.round(buy_gram_iqd),
     sell_gram_iqd: Math.round(sell_gram_iqd),
