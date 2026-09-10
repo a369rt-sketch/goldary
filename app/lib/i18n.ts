@@ -23,6 +23,8 @@ const DICT = {
       "Goldary منصّة عراقية لمتابعة أسعار الذهب لحظة بلحظة عيار 21 ومثقال، مع مجلة متخصّصة ودليل للصاغة.",
     rights: "© 2026 Goldary. جميع الحقوق محفوظة.",
     curated_by: "Curated by Alaa Raheem",
+    terms: "الشروط",
+    privacy: "الخصوصية",
 
     // Hero
     hero_tagline: "منصتك الموثوقة لفهم الذهب والسوق، محليًا وعالميًا",
@@ -271,6 +273,8 @@ const DICT = {
       "Goldary is an Iraqi platform for real-time 21K gold and mithqal prices, with a dedicated magazine and a jewelers directory.",
     rights: "© 2026 Goldary. All rights reserved.",
     curated_by: "Curated by Alaa Raheem",
+    terms: "Terms",
+    privacy: "Privacy",
 
     hero_tagline:
       "Your trusted platform to understand gold and the market, locally and globally",

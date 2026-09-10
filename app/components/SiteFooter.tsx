@@ -42,6 +42,11 @@ export default function SiteFooter() {
 
       <div className="ftr-bottom">
         <span>{t.rights}</span>
+        <span className="ftr-legal">
+          <a href="/terms">{t.terms}</a>
+          <span aria-hidden>·</span>
+          <a href="/privacy">{t.privacy}</a>
+        </span>
         <span className="ftr-by">{t.curated_by}</span>
       </div>
 
@@ -108,6 +113,19 @@ export default function SiteFooter() {
         }
         .ftr-by {
           color: var(--gold);
+        }
+        .ftr-legal {
+          display: inline-flex;
+          gap: 8px;
+          align-items: center;
+        }
+        .ftr-legal a {
+          color: var(--muted);
+          text-decoration: none;
+          transition: color 0.15s ease;
+        }
+        .ftr-legal a:hover {
+          color: var(--gold2);
         }
 
         @media (max-width: 767px) {
