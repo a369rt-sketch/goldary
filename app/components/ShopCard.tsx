@@ -7,6 +7,7 @@ import {
 import { provinces } from "@/app/lib/provinces";
 import { fmt } from "@/app/lib/goldPricing";
 import { useT } from "@/app/lib/i18n";
+import VerifiedBadge from "@/app/components/VerifiedBadge";
 
 // مفتاح المحافظة → الاسم العربي
 const provinceName = (key: string) =>
@@ -36,7 +37,13 @@ export default function ShopCard({ shop }: { shop: ShopWithPrices }) {
           />
         ) : null}
 
-        <div className="card-title">{shop.name}</div>
+        <div
+          className="card-title"
+          style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}
+        >
+          {shop.name}
+          {shop.status === "approved" && <VerifiedBadge />}
+        </div>
         <div className="muted small">{provinceName(shop.province)}</div>
 
         <div className="tiny" style={{ display: "grid", gap: 4 }}>

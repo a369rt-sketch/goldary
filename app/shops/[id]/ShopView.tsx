@@ -11,6 +11,7 @@ import { fmt } from "@/app/lib/goldPricing";
 import { useT } from "@/app/lib/i18n";
 import { getPublishedByShop, type ShopItem } from "@/app/lib/shopItems";
 import PieceCard from "@/app/components/PieceCard";
+import VerifiedBadge from "@/app/components/VerifiedBadge";
 
 // معروضات المحل — القطع المنشورة (status='published') فقط
 function ShopShowcase({ ownerId }: { ownerId: string }) {
@@ -111,7 +112,14 @@ export default function ShopView({ shop }: { shop: ShopWithPrices }) {
               }}
             />
           ) : null}
-          <h1 className="title" style={{ margin: 0, fontSize: 40 }}>{shop.name}</h1>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <h1 className="title" style={{ margin: 0, fontSize: 40 }}>{shop.name}</h1>
+            {shop.status === "approved" && (
+              <span>
+                <VerifiedBadge size="md" />
+              </span>
+            )}
+          </div>
         </div>
         <a href="/shops" className="btn-secondary">{t.back_to_shops}</a>
       </div>

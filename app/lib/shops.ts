@@ -12,6 +12,9 @@ export type Shop = {
   address: string | null;
   logo_url: string | null;
   created_at: string;
+  status?: string | null; // pending | approved | rejected | hidden
+  owner_id?: string | null;
+  karats?: string[] | null;
 };
 
 // جدول shop_prices

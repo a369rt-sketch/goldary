@@ -44,6 +44,8 @@ const DICT = {
     shop_no_prices: "لا توجد أسعار بعد",
     shop_not_available: "غير متوفر",
     view_shop: "عرض المحل",
+    verified: "موثّق",
+    verified_tip: "محل معتمد وموثّق من Goldary",
 
     // PublicInsights
     pi_heading: "إحصاءات السوق",
@@ -283,6 +285,8 @@ const DICT = {
     shop_no_prices: "No prices yet",
     shop_not_available: "Not available",
     view_shop: "View shop",
+    verified: "Verified",
+    verified_tip: "Verified by Goldary",
 
     pi_heading: "Market Insights",
     pi_sub: "Live gold indicators in Iraq",
