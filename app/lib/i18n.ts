@@ -46,6 +46,10 @@ const DICT = {
     view_shop: "عرض المحل",
     verified: "موثّق",
     verified_tip: "محل معتمد وموثّق من Goldary",
+    product_karat: "العيار",
+    product_weight: "الوزن",
+    product_tags: "وسوم",
+    product_at: "من محل",
 
     // PublicInsights
     pi_heading: "إحصاءات السوق",
@@ -287,6 +291,10 @@ const DICT = {
     view_shop: "View shop",
     verified: "Verified",
     verified_tip: "Verified by Goldary",
+    product_karat: "Karat",
+    product_weight: "Weight",
+    product_tags: "Tags",
+    product_at: "at",
 
     pi_heading: "Market Insights",
     pi_sub: "Live gold indicators in Iraq",

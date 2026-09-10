@@ -120,7 +120,12 @@ export default function PieceCard({
       )}
 
       <div style={{ padding: "10px 12px" }}>
-        <div style={{ fontWeight: 700, color: "var(--gold2)" }}>{it.name}</div>
+        <a
+          href={`/products/${it.id}`}
+          style={{ fontWeight: 700, color: "var(--gold2)", textDecoration: "none" }}
+        >
+          {it.name}
+        </a>
         <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
           {it.karat ?? "—"} · {it.weight != null ? `${it.weight} غ` : "—"}
         </div>

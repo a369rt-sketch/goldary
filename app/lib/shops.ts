@@ -123,6 +123,19 @@ export async function getShopWithPrices(
   return { ...shop, prices: shop_prices ?? [] };
 }
 
+// محل معتمد عبر معرّف المالك (= shop_items.shop_id) — لصفحة المنتج المستقلة
+export async function getApprovedShopByOwner(
+  ownerId: string
+): Promise<Shop | null> {
+  const { data } = await supabase
+    .from("shops")
+    .select("*")
+    .eq("owner_id", ownerId)
+    .eq("status", "approved")
+    .maybeSingle();
+  return (data as Shop) ?? null;
+}
+
 // تحويل قائمة الأسعار إلى خريطة عيار → سعر للعرض السريع
 export function pricesByKarat(
   prices: ShopPrice[]
