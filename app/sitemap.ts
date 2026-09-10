@@ -22,18 +22,39 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const dynamic: MetadataRoute.Sitemap = [];
 
-  // روابط المحلات — تفشل بأمان
+  // روابط المحلات — تفشل بأمان. نجمع معرّفات ملّاك المحلات المعتمدة لفلترة المنتجات.
+  const approvedOwners = new Set<string>();
   try {
     const { data } = await supabase
       .from("shops")
-      .select("id")
+      .select("id, owner_id")
       .eq("status", "approved");
     for (const s of data ?? []) {
+      if (s.owner_id) approvedOwners.add(s.owner_id as string);
       dynamic.push({
         url: `${BASE}/shops/${s.id}`,
         lastModified: now,
         changeFrequency: "weekly",
         priority: 0.6,
+      });
+    }
+  } catch {
+    /* نتجاهل ونكمل */
+  }
+
+  // روابط المنتجات المنشورة من محلات معتمدة فقط — تفشل بأمان
+  try {
+    const { data } = await supabase
+      .from("shop_items")
+      .select("id, shop_id, updated_at")
+      .eq("status", "published");
+    for (const it of data ?? []) {
+      if (!approvedOwners.has(it.shop_id as string)) continue;
+      dynamic.push({
+        url: `${BASE}/products/${it.id}`,
+        lastModified: it.updated_at ? new Date(it.updated_at) : now,
+        changeFrequency: "weekly",
+        priority: 0.5,
       });
     }
   } catch {
