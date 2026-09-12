@@ -15,8 +15,10 @@ import ShopInvoices from "./ShopInvoices";
 import ShopReports from "./ShopReports";
 import ShopStock from "./ShopStock";
 import ShopStaff from "./ShopStaff";
+import StaffDashboard from "./StaffDashboard";
 import SubscriptionCard from "./SubscriptionCard";
 import { isPro } from "@/app/lib/subscription";
+import { getMyStaffContext } from "@/app/lib/staff";
 
 // مسار تسجيل الدخول (موجود بالمشروع) — عدّله من هنا لو تغيّر
 const LOGIN_PATH = "/owner/login";
@@ -71,6 +73,12 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [shop, setShop] = useState<ShopRow | null>(null);
+  const [staffCtx, setStaffCtx] = useState<{
+    shopId: string;
+    shopName: string;
+    pro: boolean;
+    permissions: string[];
+  } | null>(null);
 
   // نموذج معلومات المحل
   const [name, setName] = useState("");
@@ -137,8 +145,10 @@ export default function DashboardPage() {
       setAddress(s.address ?? "");
       setSelectedKarats(s.karats ?? []);
       await loadPrices(s.id);
+      return s;
     } else {
       setShop(null);
+      return null;
     }
   }
 
@@ -188,7 +198,25 @@ export default function DashboardPage() {
       }
 
       setUserId(auth.user.id);
-      await loadShop(auth.user.id);
+      const owned = await loadShop(auth.user.id);
+
+      // لا يملك محلاً؟ تحقّق إن كان موظفاً في محل (عبر بريده)
+      if (!owned && mounted) {
+        const ctx = await getMyStaffContext();
+        if (ctx && mounted) {
+          const { data: sr } = await supabase
+            .from("shops")
+            .select("name, plan, plan_expires_at")
+            .eq("owner_id", ctx.shopId)
+            .maybeSingle();
+          setStaffCtx({
+            shopId: ctx.shopId,
+            shopName: (sr?.name as string) ?? "المحل",
+            pro: isPro(sr ?? {}),
+            permissions: ctx.permissions,
+          });
+        }
+      }
 
       if (!mounted) return;
       setLoading(false);
@@ -384,7 +412,15 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {!shop ? (
+      {staffCtx ? (
+        /* 0) موظف في محل — يرى أدواته المسموح بها فقط */
+        <StaffDashboard
+          shopId={staffCtx.shopId}
+          shopName={staffCtx.shopName}
+          pro={staffCtx.pro}
+          permissions={staffCtx.permissions}
+        />
+      ) : !shop ? (
         /* 1) لا يوجد محل — فورم تسجيل محل جديد (الطلب يُنشأ بحالة pending) */
         <form
           className="card"

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { getCaller } from "@/app/lib/authServer";
+import { getCaller, canActOnShop } from "@/app/lib/authServer";
 
 const service = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,7 +25,7 @@ export async function POST(
     .maybeSingle();
 
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (item.shop_id !== caller.user.id) {
+  if (!(await canActOnShop(caller, item.shop_id))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

@@ -51,3 +51,20 @@ export async function updateStaff(id: string, input: Partial<StaffInput & { acti
 export async function deleteStaff(id: string) {
   return supabase.from("shop_staff").delete().eq("id", id);
 }
+
+// سياق الموظف الحالي: المحل الذي يعمل به (إن وُجد) وصلاحياته — عبر مطابقة بريده.
+export type StaffContext = { shopId: string; permissions: string[] };
+export async function getMyStaffContext(): Promise<StaffContext | null> {
+  const { data: auth } = await supabase.auth.getUser();
+  const email = auth.user?.email;
+  if (!email) return null;
+  const { data } = await supabase
+    .from("shop_staff")
+    .select("shop_id, permissions")
+    .ilike("email", email)
+    .eq("active", true)
+    .limit(1)
+    .maybeSingle();
+  if (!data) return null;
+  return { shopId: data.shop_id as string, permissions: (data.permissions as string[]) ?? [] };
+}

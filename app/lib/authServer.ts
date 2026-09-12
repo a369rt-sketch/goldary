@@ -36,3 +36,20 @@ export async function getCaller(req: NextRequest): Promise<Caller> {
     isAdmin: !!adminRow,
   };
 }
+
+// هل يحقّ للمتصل التصرّف على محل معيّن؟ (المالك، أو الأدمن، أو موظف فعّال بالبريد)
+export async function canActOnShop(caller: Caller, shopId: string): Promise<boolean> {
+  if (!caller.user) return false;
+  if (caller.user.id === shopId) return true; // المالك (shop_id = uid)
+  if (caller.isAdmin) return true;
+  if (!caller.user.email) return false;
+  const { data } = await service
+    .from("shop_staff")
+    .select("id")
+    .eq("shop_id", shopId)
+    .ilike("email", caller.user.email)
+    .eq("active", true)
+    .limit(1)
+    .maybeSingle();
+  return !!data;
+}
