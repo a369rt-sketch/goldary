@@ -67,6 +67,16 @@ function extFromMime(type: string): string {
   return "jpg";
 }
 
+type DashTab = "inventory" | "invoices" | "reports" | "staff" | "shop" | "subscription";
+const TABS: { key: DashTab; label: string; pro?: boolean }[] = [
+  { key: "inventory", label: "المخزون" },
+  { key: "invoices", label: "الفواتير", pro: true },
+  { key: "reports", label: "التقارير", pro: true },
+  { key: "staff", label: "الموظفون", pro: true },
+  { key: "shop", label: "المتجر" },
+  { key: "subscription", label: "الاشتراك" },
+];
+
 export default function DashboardPage() {
   const router = useRouter();
 
@@ -79,6 +89,7 @@ export default function DashboardPage() {
     pro: boolean;
     permissions: string[];
   } | null>(null);
+  const [tab, setTab] = useState<DashTab>("inventory");
 
   // نموذج معلومات المحل
   const [name, setName] = useState("");
@@ -522,37 +533,71 @@ export default function DashboardPage() {
       ) : (
         /* 3) معتمد (وأي حالة أخرى مثل hidden/legacy) — واجهة إدارة المحل */
         <>
-          {/* مخزن الصائغ (عرض المنتجات — مجاني) */}
-          {userId && <ShopInventory shopUserId={userId} />}
+          {/* تبويبات اللوحة — قسم واحد ظاهر، شريط متجاوب */}
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              overflowX: "auto",
+              paddingBottom: 14,
+              marginBottom: 18,
+              borderBottom: "1px solid var(--stroke)",
+            }}
+          >
+            {TABS.filter((tb) => !tb.pro || isPro(shop)).map((tb) => {
+              const on = tab === tb.key;
+              return (
+                <button
+                  key={tb.key}
+                  type="button"
+                  onClick={() => setTab(tb.key)}
+                  style={{
+                    whiteSpace: "nowrap",
+                    border: on ? "0" : "1px solid var(--stroke)",
+                    background: on ? "linear-gradient(135deg,#f2d27b,#d7b45a)" : "transparent",
+                    color: on ? "#111" : "var(--muted)",
+                    fontWeight: 700,
+                    fontSize: 14,
+                    padding: "8px 16px",
+                    borderRadius: 999,
+                    cursor: "pointer",
+                  }}
+                >
+                  {tb.label}
+                </button>
+              );
+            })}
+          </div>
 
-          {/* حالة الاشتراك */}
-          <SubscriptionCard plan={shop.plan} expiresAt={shop.plan_expires_at} />
+          {tab === "inventory" && userId && <ShopInventory shopUserId={userId} />}
 
-          {/* الأدوات الاحترافية — للمشتركين Pro فقط */}
-          {userId && isPro(shop) && (
+          {tab === "subscription" && (
+            <SubscriptionCard plan={shop.plan} expiresAt={shop.plan_expires_at} />
+          )}
+
+          {tab === "invoices" && userId && isPro(shop) && (
+            <ShopInvoices
+              shopUserId={userId}
+              shop={{
+                name: shop.name,
+                phone: shop.phone,
+                province: shop.province,
+                logo_url: shop.logo_url,
+              }}
+            />
+          )}
+
+          {tab === "reports" && userId && isPro(shop) && (
             <>
-              {/* الفواتير */}
-              <ShopInvoices
-                shopUserId={userId}
-                shop={{
-                  name: shop.name,
-                  phone: shop.phone,
-                  province: shop.province,
-                  logo_url: shop.logo_url,
-                }}
-              />
-
-              {/* التقارير والمبيعات */}
               <ShopReports shopUserId={userId} />
-
-              {/* تتبّع المخزون */}
               <ShopStock shopUserId={userId} />
-
-              {/* الموظفون */}
-              <ShopStaff shopUserId={userId} />
             </>
           )}
 
+          {tab === "staff" && userId && isPro(shop) && <ShopStaff shopUserId={userId} />}
+
+          {tab === "shop" && (
+            <>
           {/* معلومات المحل */}
           <form className="card" style={{ maxWidth: 520 }} onSubmit={saveInfo}>
             <div className="card-title" style={{ marginBottom: 12 }}>
@@ -807,7 +852,8 @@ export default function DashboardPage() {
               </p>
             )}
           </div>
-
+            </>
+          )}
         </>
       )}
     </main>
