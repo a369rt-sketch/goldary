@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/gold",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/telegram-broadcast",
+      "schedule": "0 7 * * *"
     }
   ]
 }

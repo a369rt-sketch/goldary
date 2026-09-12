@@ -1,50 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getGoldSnapshot, type GoldSnapshot } from "@/app/lib/goldServer";
+import { getGoldSnapshot } from "@/app/lib/goldServer";
+import { supabaseAdmin } from "@/app/lib/supabaseAdmin";
+import { formatPrices, sendTelegram, WELCOME } from "@/app/lib/telegram";
 
 // بوت تيليغرام لأسعار الذهب (Phase 3).
-// الإعداد: أنشئي بوتاً عبر @BotFather → ضعي TELEGRAM_BOT_TOKEN في بيئة Vercel،
-// ثم عيّني الـwebhook:
+// الإعداد: أنشئي بوتاً عبر @BotFather → TELEGRAM_BOT_TOKEN في بيئة Vercel، ثم:
 //   https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://goldary.vercel.app/api/telegram/webhook&secret_token=<SECRET>
 // (اختياري) TELEGRAM_WEBHOOK_SECRET للتحقق أن الطلب من تيليغرام.
 
 export const dynamic = "force-dynamic";
-
-const iqd = (n: number) => Math.round(Number(n) || 0).toLocaleString("en-US");
-
-const WELCOME =
-  "أهلاً بك في بوت Goldary للذهب 🪙\n\nأرسل /price للحصول على أسعار الذهب الحالية في العراق.";
-
-function formatPrices(s: GoldSnapshot): string {
-  const date = new Date(s.recordedAt).toLocaleString("ar-EG", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-  return [
-    "🏆 أسعار الذهب — Goldary",
-    "",
-    `• عيار 24: ${iqd(s.price_gram_24k)} د.ع/غ`,
-    `• عيار 22: ${iqd(s.price_gram_22k)} د.ع/غ`,
-    `• عيار 21 (بيع): ${iqd(s.sell_gram_21k)} د.ع/غ`,
-    `• عيار 21 (شراء): ${iqd(s.buy_gram_21k)} د.ع/غ`,
-    "",
-    s.ounceUsd ? `الأونصة: $${s.ounceUsd.toLocaleString("en-US", { maximumFractionDigits: 2 })}` : "",
-    `الدولار: ${iqd(s.usdToIqd)} د.ع`,
-    "",
-    `آخر تحديث: ${date}`,
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
-
-async function sendMessage(chatId: number | string, text: string) {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  if (!token) return; // غير مُعدّ بعد — لا نرسل
-  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
-  }).catch((e) => console.error("telegram send failed:", e));
-}
 
 function isPriceQuery(text: string) {
   const cmd = text.split(/\s+/)[0].toLowerCase();
@@ -80,13 +44,20 @@ export async function POST(req: NextRequest) {
   if (!chatId || !text) return NextResponse.json({ ok: true });
 
   const cmd = text.split(/\s+/)[0].toLowerCase();
+
   if (cmd === "/start" || cmd === "/help") {
-    await sendMessage(chatId, WELCOME);
+    await sendTelegram(chatId, WELCOME);
+  } else if (cmd === "/subscribe") {
+    await supabaseAdmin.from("telegram_subscribers").upsert({ chat_id: chatId });
+    await sendTelegram(chatId, "✅ تم اشتراكك في التحديث اليومي لأسعار الذهب. أرسل /unsubscribe للإلغاء.");
+  } else if (cmd === "/unsubscribe") {
+    await supabaseAdmin.from("telegram_subscribers").delete().eq("chat_id", chatId);
+    await sendTelegram(chatId, "تم إلغاء اشتراكك. يمكنك الاشتراك مجدداً بـ /subscribe.");
   } else if (isPriceQuery(text)) {
     const snap = await getGoldSnapshot();
-    await sendMessage(chatId, snap ? formatPrices(snap) : "لا تتوفر أسعار حالياً، حاول لاحقاً.");
+    await sendTelegram(chatId, snap ? formatPrices(snap) : "لا تتوفر أسعار حالياً، حاول لاحقاً.");
   } else {
-    await sendMessage(chatId, "أرسل /price لأسعار الذهب الحالية.");
+    await sendTelegram(chatId, "أرسل /price لأسعار الذهب الحالية أو /subscribe للتحديث اليومي.");
   }
 
   // تيليغرام يتوقّع 200 دائماً
