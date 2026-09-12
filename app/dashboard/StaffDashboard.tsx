@@ -1,12 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import ShopInventory from "./ShopInventory";
 import ShopInvoices from "./ShopInvoices";
 import ShopReports from "./ShopReports";
 import ShopStock from "./ShopStock";
 
-// لوحة الموظف: يرى أدوات محله المسموح بها فقط (حسب permissions).
-// لا تسجيل محل ولا ملف/أسعار ولا إدارة موظفين ولا اشتراك.
+// لوحة الموظف: يرى أدوات محله المسموح بها فقط (حسب permissions) — بتبويبات متّسقة مع لوحة المالك.
 export default function StaffDashboard({
   shopId,
   shopName,
@@ -19,6 +19,14 @@ export default function StaffDashboard({
   permissions: string[];
 }) {
   const can = (p: string) => permissions.includes(p);
+  const tabs = [
+    { key: "invoices", label: "الفواتير" },
+    { key: "inventory", label: "المخزون" },
+    { key: "reports", label: "التقارير" },
+  ].filter((tb) => can(tb.key));
+
+  const [tab, setTab] = useState("");
+  const active = tab || tabs[0]?.key || "";
 
   return (
     <>
@@ -33,7 +41,7 @@ export default function StaffDashboard({
             الأدوات التشغيلية مقفلة حالياً. تواصل مع صاحب المحل لتفعيل الاشتراك.
           </p>
         </div>
-      ) : permissions.length === 0 ? (
+      ) : tabs.length === 0 ? (
         <div className="card" style={{ maxWidth: 720 }}>
           <div className="card-title">لا توجد صلاحيات</div>
           <p className="muted" style={{ marginTop: 6 }}>
@@ -42,14 +50,49 @@ export default function StaffDashboard({
         </div>
       ) : (
         <>
-          {can("invoices") && (
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              overflowX: "auto",
+              paddingBottom: 14,
+              marginBottom: 18,
+              borderBottom: "1px solid var(--stroke)",
+            }}
+          >
+            {tabs.map((tb) => {
+              const on = active === tb.key;
+              return (
+                <button
+                  key={tb.key}
+                  type="button"
+                  onClick={() => setTab(tb.key)}
+                  style={{
+                    whiteSpace: "nowrap",
+                    border: on ? "0" : "1px solid var(--stroke)",
+                    background: on ? "linear-gradient(135deg,#f2d27b,#d7b45a)" : "transparent",
+                    color: on ? "#111" : "var(--muted)",
+                    fontWeight: 700,
+                    fontSize: 14,
+                    padding: "8px 16px",
+                    borderRadius: 999,
+                    cursor: "pointer",
+                  }}
+                >
+                  {tb.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {active === "invoices" && (
             <ShopInvoices
               shopUserId={shopId}
               shop={{ name: shopName, phone: null, province: null, logo_url: null }}
             />
           )}
-          {can("inventory") && <ShopInventory shopUserId={shopId} />}
-          {can("reports") && (
+          {active === "inventory" && <ShopInventory shopUserId={shopId} />}
+          {active === "reports" && (
             <>
               <ShopReports shopUserId={shopId} />
               <ShopStock shopUserId={shopId} />
