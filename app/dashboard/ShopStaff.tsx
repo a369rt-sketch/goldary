@@ -1,7 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getStaff, createStaff, updateStaff, deleteStaff, type Staff } from "@/app/lib/staff";
+import {
+  getStaff,
+  createStaff,
+  updateStaff,
+  deleteStaff,
+  STAFF_PERMISSIONS,
+  PERMISSION_LABEL,
+  type Staff,
+  type StaffPermission,
+} from "@/app/lib/staff";
 
 export default function ShopStaff({ shopUserId }: { shopUserId: string }) {
   const [staff, setStaff] = useState<Staff[]>([]);
@@ -10,6 +19,11 @@ export default function ShopStaff({ shopUserId }: { shopUserId: string }) {
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [perms, setPerms] = useState<string[]>([...STAFF_PERMISSIONS]);
+
+  const togglePerm = (p: StaffPermission) =>
+    setPerms((ps) => (ps.includes(p) ? ps.filter((x) => x !== p) : [...ps, p]));
 
   const load = useCallback(async () => {
     setStaff(await getStaff(shopUserId));
@@ -28,10 +42,14 @@ export default function ShopStaff({ shopUserId }: { shopUserId: string }) {
       name: name.trim(),
       role: role.trim() || null,
       phone: phone.trim() || null,
+      email: email.trim() || null,
+      permissions: perms,
     });
     setName("");
     setRole("");
     setPhone("");
+    setEmail("");
+    setPerms([...STAFF_PERMISSIONS]);
     await load();
     setBusy(null);
   }
@@ -56,18 +74,40 @@ export default function ShopStaff({ shopUserId }: { shopUserId: string }) {
       <div className="card-title" style={{ marginBottom: 14 }}>الموظفون</div>
 
       <form className="stf-form" onSubmit={add}>
-        <input className="input" placeholder="اسم الموظف" value={name} onChange={(e) => setName(e.target.value)} required />
-        <input className="input" placeholder="الدور (بائع/مدير…)" value={role} onChange={(e) => setRole(e.target.value)} list="stf-roles" />
-        <datalist id="stf-roles">
-          <option value="بائع" />
-          <option value="مدير" />
-          <option value="صائغ" />
-          <option value="محاسب" />
-        </datalist>
-        <input className="input" placeholder="الهاتف (اختياري)" value={phone} onChange={(e) => setPhone(e.target.value)} />
-        <button type="submit" className="stf-add" disabled={busy === "add"}>
-          {busy === "add" ? "…" : "＋ إضافة"}
-        </button>
+        <div className="stf-fields">
+          <input className="input" placeholder="اسم الموظف" value={name} onChange={(e) => setName(e.target.value)} required />
+          <input className="input" placeholder="الدور (بائع/مدير…)" value={role} onChange={(e) => setRole(e.target.value)} list="stf-roles" />
+          <datalist id="stf-roles">
+            <option value="بائع" />
+            <option value="مدير" />
+            <option value="صائغ" />
+            <option value="محاسب" />
+          </datalist>
+          <input className="input" placeholder="الهاتف (اختياري)" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <input
+            className="input"
+            type="email"
+            dir="ltr"
+            placeholder="بريد الدخول (اختياري)"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        <div className="stf-perms">
+          <span className="stf-perms-label">الصلاحيات:</span>
+          {STAFF_PERMISSIONS.map((p) => (
+            <label key={p} className="stf-perm">
+              <input type="checkbox" checked={perms.includes(p)} onChange={() => togglePerm(p)} />
+              {PERMISSION_LABEL[p]}
+            </label>
+          ))}
+          <button type="submit" className="stf-add" disabled={busy === "add"}>
+            {busy === "add" ? "…" : "＋ إضافة"}
+          </button>
+        </div>
+        <p className="stf-hint">
+          لتمكين الدخول: أدخلي بريد الموظف — يسجّل دخوله بنفس البريد (رمز OTP) ويرى الأقسام المسموحة فقط.
+        </p>
       </form>
 
       {loading ? (
@@ -82,8 +122,21 @@ export default function ShopStaff({ shopUserId }: { shopUserId: string }) {
                 <span className="stf-name">{s.name}</span>
                 {s.role && <span className="stf-role">{s.role}</span>}
                 {!s.active && <span className="stf-inactive">موقوف</span>}
+                {s.email && <span className="stf-login">🔑 دخول</span>}
               </div>
-              {s.phone && <span className="muted stf-phone" dir="ltr">{s.phone}</span>}
+              <div className="stf-meta">
+                {s.phone && <span className="muted" dir="ltr">{s.phone}</span>}
+                {s.email && <span className="muted" dir="ltr">{s.email}</span>}
+                {s.permissions?.length > 0 && (
+                  <span className="stf-chips">
+                    {s.permissions.map((p) => (
+                      <span className="stf-chip" key={p}>
+                        {PERMISSION_LABEL[p as StaffPermission] ?? p}
+                      </span>
+                    ))}
+                  </span>
+                )}
+              </div>
               <div className="stf-actions">
                 <button type="button" className="stf-btn" disabled={busy === s.id} onClick={() => toggle(s)}>
                   {s.active ? "إيقاف" : "تفعيل"}
@@ -100,11 +153,36 @@ export default function ShopStaff({ shopUserId }: { shopUserId: string }) {
       <style jsx>{`
         .stf-form {
           display: grid;
-          grid-template-columns: 1.4fr 1fr 1fr auto;
+          gap: 10px;
+          margin-bottom: 16px;
+          border: 1px dashed rgba(215, 180, 90, 0.4);
+          border-radius: 14px;
+          padding: 12px;
+        }
+        .stf-fields {
+          display: grid;
+          grid-template-columns: 1.3fr 1fr 1fr 1.3fr;
           gap: 8px;
-          margin-bottom: 14px;
+        }
+        .stf-perms {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 12px;
+        }
+        .stf-perms-label {
+          color: var(--muted);
+          font-size: 13px;
+        }
+        .stf-perm {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 13px;
+          cursor: pointer;
         }
         .stf-add {
+          margin-inline-start: auto;
           border: 0;
           border-radius: 10px;
           padding: 9px 16px;
@@ -116,6 +194,41 @@ export default function ShopStaff({ shopUserId }: { shopUserId: string }) {
         }
         .stf-add:disabled {
           opacity: 0.6;
+        }
+        .stf-hint {
+          color: var(--muted);
+          font-size: 12px;
+          margin: 0;
+        }
+        .stf-login {
+          font-size: 11px;
+          color: #43c66a;
+        }
+        .stf-meta {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+          flex: 1;
+          font-size: 12px;
+        }
+        .stf-chips {
+          display: inline-flex;
+          gap: 5px;
+          flex-wrap: wrap;
+        }
+        .stf-chip {
+          font-size: 11px;
+          padding: 1px 8px;
+          border-radius: 999px;
+          background: rgba(215, 180, 90, 0.12);
+          border: 1px solid rgba(215, 180, 90, 0.28);
+          color: var(--gold2);
+        }
+        @media (max-width: 600px) {
+          .stf-fields {
+            grid-template-columns: 1fr 1fr;
+          }
         }
         .stf-list {
           display: grid;

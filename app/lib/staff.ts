@@ -2,12 +2,23 @@
 
 import { supabase } from "@/app/lib/supabaseClient";
 
+// صلاحيات أقسام لوحة المحل للموظف
+export const STAFF_PERMISSIONS = ["invoices", "inventory", "reports"] as const;
+export type StaffPermission = (typeof STAFF_PERMISSIONS)[number];
+export const PERMISSION_LABEL: Record<StaffPermission, string> = {
+  invoices: "الفواتير",
+  inventory: "المخزون",
+  reports: "التقارير",
+};
+
 export type Staff = {
   id: string;
   shop_id: string;
   name: string;
   role: string | null;
   phone: string | null;
+  email: string | null;
+  permissions: string[];
   active: boolean;
   created_at: string;
 };
@@ -16,6 +27,8 @@ export type StaffInput = {
   name: string;
   role: string | null;
   phone: string | null;
+  email: string | null;
+  permissions: string[];
 };
 
 export async function getStaff(shopUserId: string): Promise<Staff[]> {
