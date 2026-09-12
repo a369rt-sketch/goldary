@@ -19,6 +19,7 @@ const NAV = [
   { href: "/magazine", key: "nav_magazine" as const },
   { href: "/shops", key: "nav_shops" as const },
   { href: "/collection", key: "nav_collection" as const },
+  { href: "/market", key: "nav_market" as const },
 ];
 
 function isActive(pathname: string | null, href: string) {
