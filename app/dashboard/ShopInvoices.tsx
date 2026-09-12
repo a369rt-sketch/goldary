@@ -14,6 +14,7 @@ import {
   type InvoiceType,
 } from "@/app/lib/invoices";
 import { getMyItems, ITEM_KARATS, type ShopItem } from "@/app/lib/shopItems";
+import { getStaff, type Staff } from "@/app/lib/staff";
 
 type ShopHeader = {
   name: string | null;
@@ -70,14 +71,21 @@ export default function ShopInvoices({
   const [discount, setDiscount] = useState("");
   const [notes, setNotes] = useState("");
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const [staffId, setStaffId] = useState("");
 
   // الإيصال (طباعة)
   const [receipt, setReceipt] = useState<{ inv: Invoice; items: InvoiceItem[] } | null>(null);
 
   const load = useCallback(async () => {
-    const [inv, its] = await Promise.all([getMyInvoices(shopUserId), getMyItems(shopUserId)]);
+    const [inv, its, stf] = await Promise.all([
+      getMyInvoices(shopUserId),
+      getMyItems(shopUserId),
+      getStaff(shopUserId),
+    ]);
     setInvoices(inv);
     setItems(its);
+    setStaff(stf.filter((s) => s.active));
     setLoading(false);
   }, [shopUserId]);
 
@@ -94,6 +102,7 @@ export default function ShopInvoices({
     setDiscount("");
     setNotes("");
     setRows([emptyRow()]);
+    setStaffId("");
   }
 
   function setRow(key: string, patch: Partial<Row>) {
@@ -139,6 +148,7 @@ export default function ShopInvoices({
       type,
       customer_name: custName.trim() || null,
       customer_phone: custPhone.trim() || null,
+      staff_id: staffId || null,
       discount: discount ? Number(discount) : 0,
       notes: notes.trim() || null,
       items: valid.map((r) => ({
@@ -222,6 +232,22 @@ export default function ShopInvoices({
               onChange={(e) => setCustPhone(e.target.value)}
             />
           </div>
+
+          {staff.length > 0 && (
+            <select
+              className="input"
+              value={staffId}
+              onChange={(e) => setStaffId(e.target.value)}
+            >
+              <option value="">— الموظف المنفّذ (اختياري) —</option>
+              {staff.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                  {s.role ? ` (${s.role})` : ""}
+                </option>
+              ))}
+            </select>
+          )}
 
           {/* البنود */}
           <div className="iv-items">
@@ -407,6 +433,11 @@ export default function ShopInvoices({
             <div className="rcpt-cust">
               الزبون: {receipt.inv.customer_name}
               {receipt.inv.customer_phone ? ` — ${receipt.inv.customer_phone}` : ""}
+            </div>
+          )}
+          {receipt.inv.staff_id && (
+            <div className="rcpt-cust">
+              الموظف: {staff.find((s) => s.id === receipt.inv.staff_id)?.name ?? "—"}
             </div>
           )}
           <table className="rcpt-table">

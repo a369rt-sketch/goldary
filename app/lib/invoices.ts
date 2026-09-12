@@ -24,6 +24,7 @@ export type Invoice = {
   total: number;
   notes: string | null;
   status: InvoiceStatus;
+  staff_id: string | null;
   created_at: string;
 };
 
@@ -55,6 +56,7 @@ export type InvoiceInput = {
   type: InvoiceType;
   customer_name: string | null;
   customer_phone: string | null;
+  staff_id: string | null;
   discount: number;
   notes: string | null;
   items: InvoiceItemInput[];
@@ -103,6 +105,7 @@ export async function createInvoice(
       type: input.type,
       customer_name: input.customer_name,
       customer_phone: input.customer_phone,
+      staff_id: input.staff_id,
       subtotal,
       discount: Number(input.discount) || 0,
       total,

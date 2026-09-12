@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getMyInvoices, type Invoice, type InvoiceType } from "@/app/lib/invoices";
+import { getStaff, type Staff } from "@/app/lib/staff";
 
 const fmt = (n: number) => `${Math.round(Number(n) || 0).toLocaleString("en-US")} د.ع`;
 const monthKey = (iso: string) => iso.slice(0, 7); // YYYY-MM
@@ -19,12 +20,14 @@ const PERIODS: { key: Period; label: string }[] = [
 
 export default function ShopReports({ shopUserId }: { shopUserId: string }) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>("month");
 
   useEffect(() => {
-    getMyInvoices(shopUserId).then((inv) => {
+    Promise.all([getMyInvoices(shopUserId), getStaff(shopUserId)]).then(([inv, stf]) => {
       setInvoices(inv);
+      setStaff(stf);
       setLoading(false);
     });
   }, [shopUserId]);
@@ -51,6 +54,22 @@ export default function ShopReports({ shopUserId }: { shopUserId: string }) {
   const net = sales + repairs - purchases;
 
   const countBy = (t: InvoiceType) => inPeriod.filter((i) => i.type === t).length;
+
+  // المبيعات حسب الموظف (فواتير البيع في الفترة)
+  const perStaff = useMemo(() => {
+    const nameOf = (id: string | null) =>
+      id ? staff.find((s) => s.id === id)?.name ?? "موظف محذوف" : "غير محدد";
+    const map = new Map<string, { name: string; total: number; count: number }>();
+    for (const i of inPeriod) {
+      if (i.type !== "sale") continue;
+      const key = i.staff_id ?? "none";
+      const cur = map.get(key) ?? { name: nameOf(i.staff_id), total: 0, count: 0 };
+      cur.total += Number(i.total) || 0;
+      cur.count += 1;
+      map.set(key, cur);
+    }
+    return [...map.values()].sort((a, b) => b.total - a.total);
+  }, [inPeriod, staff]);
 
   // مخطط شهري لآخر 6 أشهر (مبيعات) — مستقل عن الفلتر
   const monthly = useMemo(() => {
@@ -140,6 +159,22 @@ export default function ShopReports({ shopUserId }: { shopUserId: string }) {
               ))}
             </div>
           </div>
+
+          {/* المبيعات حسب الموظف */}
+          {perStaff.length > 0 && (
+            <div className="rp-staff">
+              <div className="rp-chart-title">المبيعات حسب الموظف</div>
+              <div className="rp-staff-list">
+                {perStaff.map((s) => (
+                  <div className="rp-staff-row" key={s.name}>
+                    <span>{s.name}</span>
+                    <span className="muted">{s.count} فاتورة</span>
+                    <b className="rp-gold">{fmt(s.total)}</b>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
 
@@ -252,6 +287,26 @@ export default function ShopReports({ shopUserId }: { shopUserId: string }) {
           color: var(--muted);
           font-size: 10px;
           white-space: nowrap;
+        }
+        .rp-staff {
+          margin-top: 18px;
+          border-top: 1px solid var(--stroke);
+          padding-top: 14px;
+        }
+        .rp-staff-list {
+          display: grid;
+          gap: 8px;
+        }
+        .rp-staff-row {
+          display: grid;
+          grid-template-columns: 1fr auto auto;
+          gap: 12px;
+          align-items: center;
+          background: rgba(0, 0, 0, 0.18);
+          border: 1px solid rgba(215, 180, 90, 0.14);
+          border-radius: 10px;
+          padding: 8px 12px;
+          font-size: 14px;
         }
       `}</style>
     </section>

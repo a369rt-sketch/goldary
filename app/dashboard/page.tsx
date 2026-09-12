@@ -14,6 +14,7 @@ import ShopInventory from "./ShopInventory";
 import ShopInvoices from "./ShopInvoices";
 import ShopReports from "./ShopReports";
 import ShopStock from "./ShopStock";
+import ShopStaff from "./ShopStaff";
 import SubscriptionCard from "./SubscriptionCard";
 import { isPro } from "@/app/lib/subscription";
 
@@ -510,6 +511,9 @@ export default function DashboardPage() {
 
               {/* تتبّع المخزون */}
               <ShopStock shopUserId={userId} />
+
+              {/* الموظفون */}
+              <ShopStaff shopUserId={userId} />
             </>
           )}
 
