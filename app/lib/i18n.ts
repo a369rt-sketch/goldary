@@ -75,6 +75,8 @@ const DICT = {
     // Magazine
     mag_title: "مجلة Goldary",
     mag_subtitle: "أخبار وتحليلات الذهب والسوق في العراق",
+    mag_latest: "أحدث المقالات",
+    mag_view_all: "عرض كل المقالات",
     my_articles: "مقالاتي",
     home: "الرئيسية",
     back: "رجوع",
@@ -322,6 +324,8 @@ const DICT = {
     // Magazine
     mag_title: "Goldary Magazine",
     mag_subtitle: "Gold and market news & analysis in Iraq",
+    mag_latest: "Latest Articles",
+    mag_view_all: "View all articles",
     my_articles: "My Articles",
     home: "Home",
     back: "Back",

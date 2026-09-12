@@ -4,6 +4,7 @@ import GoldTicker from "./components/GoldTicker";
 import Hero from "./components/Hero";
 import PublicInsights from "./components/PublicInsights";
 import ShopsPreview from "./components/ShopsPreview";
+import MagazinePreview from "./components/MagazinePreview";
 import { useCurrency } from "./lib/currency";
 import { useT } from "./lib/i18n";
 
@@ -37,6 +38,8 @@ export default function Home() {
       <Hero />
 
       <ShopsPreview />
+
+      <MagazinePreview />
 
       <PublicInsights />
     </main>
