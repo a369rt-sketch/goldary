@@ -71,13 +71,6 @@ export async function GET() {
   return NextResponse.json({
     ok: !!snap,
     configured: !!token,
-    tokenSource: process.env.TELEGRAM_BOT_TOKEN ? "env" : token ? "db" : "none",
-    env: {
-      TELEGRAM_BOT_TOKEN: !!process.env.TELEGRAM_BOT_TOKEN,
-      TELEGRAM_WEBHOOK_SECRET: !!process.env.TELEGRAM_WEBHOOK_SECRET,
-      CRON_SECRET: !!process.env.CRON_SECRET,
-      GOLD_API_KEY: !!process.env.GOLD_API_KEY,
-    },
     preview: snap ? formatPrices(snap) : null,
   });
 }
