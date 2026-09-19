@@ -64,12 +64,18 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
-// معاينة نص الأسعار (للاختبار/التحقق بدون بوت حي) — بيانات عامة
+// معاينة + تشخيص وجود متغيّرات البيئة (أسماء فقط، بلا قيم) — بيانات عامة
 export async function GET() {
   const snap = await getGoldSnapshot();
   return NextResponse.json({
     ok: !!snap,
     configured: !!process.env.TELEGRAM_BOT_TOKEN,
+    env: {
+      TELEGRAM_BOT_TOKEN: !!process.env.TELEGRAM_BOT_TOKEN,
+      TELEGRAM_WEBHOOK_SECRET: !!process.env.TELEGRAM_WEBHOOK_SECRET,
+      CRON_SECRET: !!process.env.CRON_SECRET,
+      GOLD_API_KEY: !!process.env.GOLD_API_KEY,
+    },
     preview: snap ? formatPrices(snap) : null,
   });
 }
