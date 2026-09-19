@@ -56,14 +56,14 @@ export default function ShopsPage() {
           placeholder={t.search_shop}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          style={{ width: 240 }}
+          style={{ flex: "1 1 220px", minWidth: 0 }}
         />
 
         <select
           className="input"
           value={province}
           onChange={(e) => setProvince(e.target.value)}
-          style={{ width: 200 }}
+          style={{ flex: "1 1 160px", minWidth: 0 }}
         >
           <option value="all">{t.all_provinces}</option>
           {provinces.map((item) => (

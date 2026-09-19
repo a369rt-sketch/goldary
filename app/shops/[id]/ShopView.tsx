@@ -113,7 +113,7 @@ export default function ShopView({ shop }: { shop: ShopWithPrices }) {
             />
           ) : null}
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <h1 className="title" style={{ margin: 0, fontSize: 40 }}>{shop.name}</h1>
+            <h1 className="title" style={{ margin: 0, fontSize: "clamp(26px, 6vw, 40px)" }}>{shop.name}</h1>
             {shop.status === "approved" && (
               <span>
                 <VerifiedBadge size="md" />
