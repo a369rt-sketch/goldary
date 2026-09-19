@@ -1,17 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import SiteChrome from "./components/SiteChrome";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+// ملاحظة: أُزيل next/font/google (Geist) لأنه يفشل في بناء البيئات المقيّدة
+// (fetch من Google Fonts)، وglobals.css يستخدم أصلاً حزمة خطوط نظام — فلا أثر بصري.
 
 const SEO_DESCRIPTION =
   "تابع أسعار الذهب في العراق لحظة بلحظة — سعر غرام ومثقال عيار 21 مع تحديث مستمر وحركة السوق.";
@@ -66,9 +58,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className="antialiased">
         <SiteChrome>{children}</SiteChrome>
       </body>
     </html>
