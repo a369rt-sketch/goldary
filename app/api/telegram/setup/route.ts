@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getBotToken } from "@/app/lib/telegram";
 
 // تفعيل بنقرة: يضبط webhook تيليغرام تلقائياً على هذا الدومين.
 // زوري: /api/telegram/setup?secret=<CRON_SECRET> (بعد ضبط TELEGRAM_BOT_TOKEN في البيئة).
@@ -11,10 +12,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
-  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const token = await getBotToken(); // من env أو app_secrets
   if (!token) {
     return NextResponse.json(
-      { ok: false, error: "TELEGRAM_BOT_TOKEN غير مضبوط في بيئة Vercel بعد" },
+      { ok: false, error: "لا يوجد توكن — اضبطي TELEGRAM_BOT_TOKEN أو صف app_secrets" },
       { status: 400 }
     );
   }

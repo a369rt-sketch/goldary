@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getGoldSnapshot } from "@/app/lib/goldServer";
 import { supabaseAdmin } from "@/app/lib/supabaseAdmin";
-import { formatPrices, sendTelegram, WELCOME } from "@/app/lib/telegram";
+import { formatPrices, sendTelegram, getBotToken, WELCOME } from "@/app/lib/telegram";
 
 // بوت تيليغرام لأسعار الذهب (Phase 3).
 // الإعداد: أنشئي بوتاً عبر @BotFather → TELEGRAM_BOT_TOKEN في بيئة Vercel، ثم:
@@ -67,9 +67,11 @@ export async function POST(req: NextRequest) {
 // معاينة + تشخيص وجود متغيّرات البيئة (أسماء فقط، بلا قيم) — بيانات عامة
 export async function GET() {
   const snap = await getGoldSnapshot();
+  const token = await getBotToken();
   return NextResponse.json({
     ok: !!snap,
-    configured: !!process.env.TELEGRAM_BOT_TOKEN,
+    configured: !!token,
+    tokenSource: process.env.TELEGRAM_BOT_TOKEN ? "env" : token ? "db" : "none",
     env: {
       TELEGRAM_BOT_TOKEN: !!process.env.TELEGRAM_BOT_TOKEN,
       TELEGRAM_WEBHOOK_SECRET: !!process.env.TELEGRAM_WEBHOOK_SECRET,

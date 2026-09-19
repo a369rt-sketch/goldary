@@ -1,6 +1,21 @@
 import { type GoldSnapshot } from "@/app/lib/goldServer";
+import { supabaseAdmin } from "@/app/lib/supabaseAdmin";
 
 // أدوات تيليغرام المشتركة (خادمية) — يستعملها الـwebhook وكرون البثّ.
+
+// توكن البوت: من بيئة Vercel أولاً، وإلا من جدول app_secrets (بديل موثوق).
+let cachedToken: string | null = null;
+export async function getBotToken(): Promise<string> {
+  if (process.env.TELEGRAM_BOT_TOKEN) return process.env.TELEGRAM_BOT_TOKEN;
+  if (cachedToken) return cachedToken;
+  const { data } = await supabaseAdmin
+    .from("app_secrets")
+    .select("value")
+    .eq("key", "telegram_bot_token")
+    .maybeSingle();
+  cachedToken = (data?.value as string) ?? "";
+  return cachedToken;
+}
 
 const iqd = (n: number) => Math.round(Number(n) || 0).toLocaleString("en-US");
 
@@ -34,7 +49,7 @@ export function formatPrices(s: GoldSnapshot): string {
 
 // يرسل رسالة عبر bot API. يعيد true عند النجاح (لإحصاء البثّ).
 export async function sendTelegram(chatId: number | string, text: string): Promise<boolean> {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const token = await getBotToken();
   if (!token) return false; // غير مُعدّ بعد
   try {
     const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
