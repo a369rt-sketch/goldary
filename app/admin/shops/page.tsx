@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/supabaseClient";
+import { authFetch } from "@/app/lib/useAuth";
 import { type Shop } from "@/app/lib/shops";
 import { setShopPlan, isPro } from "@/app/lib/subscription";
 import { provinces } from "@/app/lib/provinces";
@@ -38,20 +39,20 @@ export default function AdminShopsPage() {
   const [err, setErr] = useState("");
   const [search, setSearch] = useState("");
 
-  // كل المحلات، مرتّبة بالأحدث
+  // كل المحلات عبر مسار الأدمن (service role) — يتجاوز RLS فيظهر حتى الـpending،
+  // مرتّبة pending أولاً ثم الأحدث ضمن كل مجموعة.
   async function loadShops() {
     setLoadingShops(true);
-    const { data, error } = await supabase
-      .from("shops")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      setErr("تعذّر جلب المحلات");
+    setErr("");
+    const res = await authFetch("/api/admin/shops");
+    if (!res.ok) {
+      setErr(res.status === 403 ? "غير مصرّح لك بالدخول" : "تعذّر جلب المحلات");
       setShops([]);
-    } else {
-      setShops((data ?? []) as ShopRow[]);
+      setLoadingShops(false);
+      return;
     }
+    const { shops: rows } = await res.json();
+    setShops((rows ?? []) as ShopRow[]);
     setLoadingShops(false);
   }
 
@@ -98,14 +99,15 @@ export default function AdminShopsPage() {
     setErr("");
     setBusyId(shop.id);
 
-    const { error } = await supabase
-      .from("shops")
-      .update({ status })
-      .eq("id", shop.id);
+    const res = await authFetch(`/api/admin/shops/${shop.id}/status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
 
     setBusyId(null);
 
-    if (error) {
+    if (!res.ok) {
       setErr("تعذّر تنفيذ الإجراء، حاول مرة أخرى");
       return;
     }
@@ -153,11 +155,13 @@ export default function AdminShopsPage() {
     setErr("");
     setBusyId(shop.id);
 
-    const { error } = await supabase.from("shops").delete().eq("id", shop.id);
+    const res = await authFetch(`/api/admin/shops/${shop.id}`, {
+      method: "DELETE",
+    });
 
     setBusyId(null);
 
-    if (error) {
+    if (!res.ok) {
       setErr("تعذّر حذف المحل، حاول مرة أخرى");
       return;
     }
