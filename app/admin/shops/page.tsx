@@ -39,51 +39,77 @@ export default function AdminShopsPage() {
   const [err, setErr] = useState("");
   const [search, setSearch] = useState("");
 
-  // كل المحلات عبر مسار الأدمن (service role) — يتجاوز RLS فيظهر حتى الـpending،
-  // مرتّبة pending أولاً ثم الأحدث ضمن كل مجموعة.
-  async function loadShops() {
+  // استدعاء واحد لمسار الأدمن (service role): يقرّر الصلاحية والبيانات معاً.
+  //   401 → غير مسجّل → صفحة الدخول · 403 → غير أدمن → ممنوع · 200 → عرض المحلات.
+  // نمرّر التوكن مباشرةً (من getSession) لتفادي استدعاء مصادقة إضافي.
+  async function loadShops(token?: string) {
     setLoadingShops(true);
     setErr("");
-    const res = await authFetch("/api/admin/shops");
-    if (!res.ok) {
-      setErr(res.status === 403 ? "غير مصرّح لك بالدخول" : "تعذّر جلب المحلات");
+
+    let res: Response;
+    try {
+      res = token
+        ? await fetch("/api/admin/shops", {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+        : await authFetch("/api/admin/shops");
+    } catch {
+      setAccess("granted"); // أظهر الصفحة مع خطأ بدل تعليق لانهائي
+      setErr("تعذّر الاتصال بالخادم، أعيدي المحاولة");
       setShops([]);
       setLoadingShops(false);
       return;
     }
+
+    if (res.status === 401) {
+      router.replace(LOGIN_PATH);
+      return;
+    }
+    if (res.status === 403) {
+      setAccess("denied");
+      setLoadingShops(false);
+      return;
+    }
+
+    setAccess("granted");
+    if (!res.ok) {
+      setErr("تعذّر جلب المحلات");
+      setShops([]);
+      setLoadingShops(false);
+      return;
+    }
+
     const { shops: rows } = await res.json();
     setShops((rows ?? []) as ShopRow[]);
     setLoadingShops(false);
   }
 
-  // حماية مزدوجة: مسجّل دخول + أدمن
+  // بوابة الوصول: نقرأ الجلسة محلياً (getSession — بلا شبكة) مع مؤقّت حارس حتى
+  // لا تعلّق الصفحة للأبد على "جارٍ التحقق". القرار النهائي (أدمن؟) على الخادم.
   useEffect(() => {
     let mounted = true;
 
     async function init() {
-      const { data: auth } = await supabase.auth.getUser();
+      let token: string | null = null;
+      try {
+        const result = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("session-timeout")), 8000)
+          ),
+        ]);
+        token = result.data.session?.access_token ?? null;
+      } catch {
+        token = null; // تجاوز المؤقّت أو خطأ → عاملها كعدم وجود جلسة
+      }
       if (!mounted) return;
 
-      if (!auth.user) {
+      if (!token) {
         router.replace(LOGIN_PATH);
         return;
       }
 
-      const { data: adminRow } = await supabase
-        .from("admins")
-        .select("user_id")
-        .eq("user_id", auth.user.id)
-        .maybeSingle();
-
-      if (!mounted) return;
-
-      if (!adminRow) {
-        setAccess("denied");
-        return;
-      }
-
-      setAccess("granted");
-      await loadShops();
+      await loadShops(token);
     }
 
     init();
