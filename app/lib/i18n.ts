@@ -176,6 +176,20 @@ const DICT = {
     b_publish: "نشر المقال",
     b_save_draft: "حفظ كمسودة",
 
+    // النسخة الإنجليزية (المرحلة B)
+    en_section: "النسخة الإنجليزية",
+    en_hint: "املأ الحقول الإنجليزية أو استخدم الترجمة التلقائية، ثم يعتمدها الأدمن قبل ظهورها.",
+    en_title: "العنوان (إنجليزي)",
+    en_excerpt: "الملخص (إنجليزي)",
+    en_content: "المحتوى (إنجليزي، Markdown)",
+    en_approve: "اعتماد النسخة الإنجليزية (تُعرض للجمهور)",
+    en_pending_admin: "تُحفظ كمسودة؛ يعتمدها الأدمن قبل ظهورها بالإنجليزية.",
+    tr_button: "ترجمة تلقائية",
+    tr_running: "جارٍ الترجمة…",
+    tr_done: "تمت الترجمة — راجعها قبل الاعتماد ✓",
+    tr_failed: "تعذّرت الترجمة التلقائية",
+    tr_need_source: "أدخل العنوان والمحتوى بالعربية أولاً",
+
     // صفحة دخول الصاغة (OTP)
     login_title: "تسجيل دخول أصحاب المحلات",
     login_lead_email: "أدخل بريدك الإلكتروني وسنرسل لك رمز دخول",
@@ -437,6 +451,20 @@ const DICT = {
     b_save_edits: "Save changes",
     b_publish: "Publish",
     b_save_draft: "Save as draft",
+
+    // English version (Phase B)
+    en_section: "English version",
+    en_hint: "Fill the English fields or use auto-translate, then an admin approves before it shows.",
+    en_title: "Title (English)",
+    en_excerpt: "Excerpt (English)",
+    en_content: "Content (English, Markdown)",
+    en_approve: "Approve English version (show to public)",
+    en_pending_admin: "Saved as a draft; an admin approves it before it appears in English.",
+    tr_button: "Auto-translate",
+    tr_running: "Translating…",
+    tr_done: "Translated — review before approving ✓",
+    tr_failed: "Auto-translation failed",
+    tr_need_source: "Enter the Arabic title and content first",
 
     // Owner login page (OTP)
     login_title: "Shop Owner Login",

@@ -14,6 +14,8 @@ export type ArticleCategory =
   | 'investment'
   | 'markets';
 
+type TranslationStatus = 'none' | 'draft' | 'approved';
+
 export interface ArticleFormData {
   title: string;
   slug: string;
@@ -22,6 +24,11 @@ export interface ArticleFormData {
   category: ArticleCategory;
   coverImageUrl: string | null;
   published: boolean;
+  // النسخة الإنجليزية (المرحلة B)
+  titleEn: string;
+  excerptEn: string;
+  contentEn: string;
+  translationStatus: TranslationStatus;
 }
 
 // value = مفتاح القسم في قاعدة البيانات (قيد CHECK)، label = العرض العربي
@@ -41,6 +48,10 @@ const EMPTY_FORM: ArticleFormData = {
   category: 'news',
   coverImageUrl: null,
   published: false,
+  titleEn: '',
+  excerptEn: '',
+  contentEn: '',
+  translationStatus: 'none',
 };
 
 interface ArticleFormProps {
@@ -61,6 +72,47 @@ export default function ArticleForm({ initial, onClose, onSaved }: ArticleFormPr
   });
   const [uploadingImage, setUploadingImage] = useState(false);
   const [message, setMessage] = useState('');
+  const [translating, setTranslating] = useState(false);
+
+  // ترجمة تلقائية عربي→إنجليزي (تملأ الحقول الإنجليزية كمسودة للمراجعة)
+  const handleTranslate = async () => {
+    if (!form.title.trim() || !form.content.trim()) {
+      setMessage(t.tr_need_source);
+      return;
+    }
+    setTranslating(true);
+    try {
+      const res = await authFetch('/api/magazine/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: form.title,
+          excerpt: form.excerpt,
+          content: form.content,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setForm((prev) => ({
+          ...prev,
+          titleEn: data.title_en ?? '',
+          excerptEn: data.excerpt_en ?? '',
+          contentEn: data.content_en ?? '',
+          // ترجمة جديدة = مسودة بانتظار المراجعة (لا تُعرض للجمهور)
+          translationStatus: 'draft',
+        }));
+        setMessage(t.tr_done);
+        setTimeout(() => setMessage(''), 3000);
+      } else {
+        setMessage(data.error || t.tr_failed);
+      }
+    } catch (e) {
+      console.error('Translate error:', e);
+      setMessage(t.tr_failed);
+    } finally {
+      setTranslating(false);
+    }
+  };
 
   const generateSlug = (text: string) =>
     text
@@ -308,6 +360,102 @@ export default function ArticleForm({ initial, onClose, onSaved }: ArticleFormPr
               required
             />
             <p className="text-xs text-gray-500 mt-2">{t.f_img_hint}</p>
+          </div>
+
+          {/* ===== النسخة الإنجليزية (المرحلة B) ===== */}
+          <div style={{ borderTop: '1px solid rgba(215,180,90,0.25)', paddingTop: 18 }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 10,
+                marginBottom: 10,
+              }}
+            >
+              <strong style={{ color: 'var(--gold2, #f2d27b)', fontSize: 14 }}>
+                {t.en_section}
+              </strong>
+              <button
+                type="button"
+                onClick={handleTranslate}
+                disabled={translating}
+                style={{
+                  border: '1px solid rgba(215,180,90,0.5)',
+                  background: 'rgba(215,180,90,0.10)',
+                  color: 'var(--gold2, #f2d27b)',
+                  borderRadius: 999,
+                  padding: '8px 16px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: translating ? 'default' : 'pointer',
+                  opacity: translating ? 0.6 : 1,
+                }}
+              >
+                {translating ? t.tr_running : t.tr_button}
+              </button>
+            </div>
+            <p className="text-xs text-gray-500" style={{ marginTop: 0, marginBottom: 12 }}>
+              {t.en_hint}
+            </p>
+
+            <label className="block text-sm font-semibold text-gold2 mb-2">{t.en_title}</label>
+            <input
+              type="text"
+              dir="ltr"
+              value={form.titleEn}
+              onChange={(e) => setForm({ ...form, titleEn: e.target.value })}
+              className="w-full bg-dark border border-gold2/30 rounded-lg px-4 py-2 text-white focus:border-gold2 focus:outline-none transition"
+            />
+
+            <label className="block text-sm font-semibold text-gold2 mb-2" style={{ marginTop: 12 }}>
+              {t.en_excerpt}
+            </label>
+            <textarea
+              dir="ltr"
+              rows={3}
+              value={form.excerptEn}
+              onChange={(e) => setForm({ ...form, excerptEn: e.target.value })}
+              className="w-full bg-dark border border-gold2/30 rounded-lg px-4 py-2 text-white focus:border-gold2 focus:outline-none transition resize-none"
+            />
+
+            <label className="block text-sm font-semibold text-gold2 mb-2" style={{ marginTop: 12 }}>
+              {t.en_content}
+            </label>
+            <textarea
+              dir="ltr"
+              rows={8}
+              value={form.contentEn}
+              onChange={(e) => setForm({ ...form, contentEn: e.target.value })}
+              className="w-full bg-dark border border-gold2/30 rounded-lg px-4 py-2 text-white focus:border-gold2 focus:outline-none transition resize-none font-mono text-sm"
+            />
+
+            {/* اعتماد النسخة الإنجليزية — للأدمن فقط؛ لا تُعرض للجمهور حتى الاعتماد */}
+            {isAdmin ? (
+              <label className="flex items-center gap-3" style={{ marginTop: 12 }}>
+                <input
+                  type="checkbox"
+                  checked={form.translationStatus === 'approved'}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      translationStatus: e.target.checked
+                        ? 'approved'
+                        : form.contentEn.trim()
+                        ? 'draft'
+                        : 'none',
+                    })
+                  }
+                  className="w-4 h-4"
+                />
+                <span className="text-sm text-gold2">{t.en_approve}</span>
+              </label>
+            ) : (
+              <p className="text-xs text-gray-400" style={{ marginTop: 10 }}>
+                {t.en_pending_admin}
+              </p>
+            )}
           </div>
 
           {/* Publish Toggle — للأدمن فقط (نشر مباشر) */}

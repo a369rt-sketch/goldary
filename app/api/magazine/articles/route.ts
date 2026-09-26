@@ -41,6 +41,23 @@ function makeSlug(provided: string | undefined | null, title: string): string {
 type Status = 'draft' | 'pending' | 'approved' | 'rejected';
 const VALID: Status[] = ['draft', 'pending', 'approved', 'rejected'];
 
+type TranslationStatus = 'none' | 'draft' | 'approved';
+const VALID_TR: TranslationStatus[] = ['none', 'draft', 'approved'];
+
+// حقول النسخة الإنجليزية — تُطبَّع من جسم الطلب (camelCase) إلى أعمدة القاعدة
+function englishFields(body: Record<string, unknown>) {
+  const tr = (VALID_TR as string[]).includes(body.translationStatus as string)
+    ? (body.translationStatus as TranslationStatus)
+    : 'none';
+  const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v : null);
+  return {
+    title_en: str(body.titleEn),
+    excerpt_en: str(body.excerptEn),
+    content_en: str(body.contentEn),
+    translation_status: tr,
+  };
+}
+
 // يحدّد الحالة النهائية حسب الدور: المساهم لا يتجاوز pending، الأدمن يقدر يعتمد.
 function resolveStatus(requested: unknown, isAdmin: boolean): Status {
   const s = (VALID as string[]).includes(requested as string)
@@ -117,6 +134,7 @@ export async function POST(request: NextRequest) {
           author_name: caller.user.email ?? null,
           published,
           published_at: published ? new Date().toISOString() : null,
+          ...englishFields(body),
         },
       ])
       .select();
@@ -183,6 +201,7 @@ export async function PUT(request: NextRequest) {
         status,
         published,
         published_at,
+        ...englishFields(body),
       })
       .eq('id', id)
       .select();

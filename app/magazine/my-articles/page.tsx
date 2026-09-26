@@ -7,6 +7,8 @@ import { authFetch } from '@/app/lib/useAuth';
 
 type ArticleStatus = 'draft' | 'pending' | 'approved' | 'rejected';
 
+type TranslationStatus = 'none' | 'draft' | 'approved';
+
 type Article = {
   id: string;
   title: string;
@@ -19,6 +21,10 @@ type Article = {
   status: ArticleStatus;
   created_at: string;
   published_at: string | null;
+  title_en: string | null;
+  excerpt_en: string | null;
+  content_en: string | null;
+  translation_status: TranslationStatus | null;
 };
 
 // ألوان شارات الحالة
@@ -188,6 +194,10 @@ export default function MyArticlesPage() {
             category: editing.category,
             coverImageUrl: editing.cover_image_url,
             published: editing.published,
+            titleEn: editing.title_en ?? '',
+            excerptEn: editing.excerpt_en ?? '',
+            contentEn: editing.content_en ?? '',
+            translationStatus: editing.translation_status ?? 'none',
           }}
           onClose={() => setEditing(null)}
           onSaved={load}

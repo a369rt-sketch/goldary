@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   getPublishedArticles,
+  localizedArticle,
   type Article,
   type ArticleCategory,
 } from "@/app/lib/articles";
@@ -80,6 +81,7 @@ export default function MagazinePage() {
     () => articles.find((a) => a.category === "news") ?? null,
     [articles]
   );
+  const newsLoc = newsToday ? localizedArticle(newsToday, lang) : null;
 
   const listRef = useReveal<HTMLDivElement>(`${tab}:${filtered.length}`);
 
@@ -197,11 +199,11 @@ export default function MagazinePage() {
                   color: "#6B5446",
                 }}
               >
-                {newsToday.title}
+                {newsLoc?.title}
               </h2>
-              {newsToday.excerpt && (
+              {newsLoc?.excerpt && (
                 <p style={{ margin: 0, fontSize: 15, lineHeight: 1.8, color: "#2E2A25" }}>
-                  {newsToday.excerpt}
+                  {newsLoc.excerpt}
                 </p>
               )}
               <a
@@ -277,6 +279,7 @@ export default function MagazinePage() {
             ) : (
               filtered.map((a) => {
                 const shape = shapeOf(a);
+                const loc = localizedArticle(a, lang);
                 const cat = t.categories[a.category];
                 const date = fmtDate(a.published_at);
                 const href = `/magazine/${a.slug}`;
@@ -313,16 +316,16 @@ export default function MagazinePage() {
                             color: "#6B5446",
                           }}
                         >
-                          {a.title}
+                          {loc.title}
                         </h3>
-                        {a.excerpt && (
-                          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.7 }}>{a.excerpt}</p>
+                        {loc.excerpt && (
+                          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.7 }}>{loc.excerpt}</p>
                         )}
                       </div>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={a.cover_image_url!}
-                        alt={a.title}
+                        alt={loc.title}
                         style={{
                           width: 104,
                           height: 104,
@@ -372,15 +375,15 @@ export default function MagazinePage() {
                             lineHeight: 1.35,
                           }}
                         >
-                          {a.title}
+                          {loc.title}
                         </span>
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "#4A4238" }}>
                         <span style={{ fontWeight: 600, color: "#4E3C31" }}>{cat}</span>
                         <span>{date}</span>
                       </div>
-                      {a.excerpt && (
-                        <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.8 }}>{a.excerpt}</p>
+                      {loc.excerpt && (
+                        <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.8 }}>{loc.excerpt}</p>
                       )}
                     </a>
                   );
@@ -416,10 +419,10 @@ export default function MagazinePage() {
                         color: "#6B5446",
                       }}
                     >
-                      {a.title}
+                      {loc.title}
                     </h3>
-                    {a.excerpt && (
-                      <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.7 }}>{a.excerpt}</p>
+                    {loc.excerpt && (
+                      <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.7 }}>{loc.excerpt}</p>
                     )}
                   </a>
                 );

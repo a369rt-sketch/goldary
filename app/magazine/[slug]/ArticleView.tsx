@@ -1,13 +1,17 @@
 "use client";
 
 import ReactMarkdown from "react-markdown";
-import { type Article } from "@/app/lib/articles";
+import { type Article, localizedArticle } from "@/app/lib/articles";
 import { fmt } from "@/app/lib/goldPricing";
 import { useT } from "@/app/lib/i18n";
 import ShareButton from "./ShareButton";
 
 export default function ArticleView({ article }: { article: Article }) {
   const { t, lang, dir } = useT();
+
+  // العرض حسب اللغة: الإنجليزية المعتمدة فقط، وإلا العربية
+  const loc = localizedArticle(article, lang);
+  const showEnPending = lang === "en" && !loc.isEnglish;
 
   const dateFmt = (iso: string | null) =>
     iso
@@ -19,7 +23,7 @@ export default function ArticleView({ article }: { article: Article }) {
       : "";
 
   // مدة القراءة التقريبية (~200 كلمة/دقيقة)
-  const words = (article.content ?? "").trim().split(/\s+/).filter(Boolean).length;
+  const words = (loc.content ?? "").trim().split(/\s+/).filter(Boolean).length;
   const readMin = Math.max(1, Math.round(words / 200));
   const meta = [dateFmt(article.published_at), t.mag_read_time.replace("{n}", String(readMin))]
     .filter(Boolean)
@@ -94,11 +98,11 @@ export default function ArticleView({ article }: { article: Article }) {
                 color: "#6B5446",
               }}
             >
-              {article.title}
+              {loc.title}
             </h1>
-            {article.excerpt && (
+            {loc.excerpt && (
               <p style={{ margin: 0, fontSize: 16, lineHeight: 1.85, color: "#2E2A25" }}>
-                {article.excerpt}
+                {loc.excerpt}
               </p>
             )}
             {meta && <span style={{ fontSize: 13, color: "#4A4238" }}>{meta}</span>}
@@ -109,7 +113,7 @@ export default function ArticleView({ article }: { article: Article }) {
               </span>
             )}
 
-            {lang === "en" && (
+            {showEnPending && (
               <span style={{ fontSize: 12.5, color: "#7A5A18", marginTop: 2 }}>
                 {t.mag_en_pending}
               </span>
@@ -135,7 +139,7 @@ export default function ArticleView({ article }: { article: Article }) {
                 ),
               }}
             >
-              {article.content ?? ""}
+              {loc.content ?? ""}
             </ReactMarkdown>
           </article>
 
