@@ -89,6 +89,20 @@ const DICT = {
     published_on: "نُشر في",
     affects_prefix: "يؤثر على:",
 
+    // تصميم المجلة الجديد
+    mag_tagline: "كل ما يخص الذهب في العراق",
+    mag_menu: "القائمة",
+    mag_news_today: "خبر اليوم",
+    mag_read_news: "اقرأ الخبر",
+    mag_price_today: "سعر الذهب اليوم",
+    mag_latest_posts: "آخر المنشورات",
+    mag_read_time: "قراءة {n} دقائق",
+    mag_disclaimer: "هذا المقال للتثقيف المالي، ولا يُعدّ نصيحة استثمارية.",
+    mag_en_pending: "النسخة الإنجليزية قيد الإعداد — يظهر المقال بالعربية.",
+    pb_gram21: "غرام عيار 21",
+    pb_ounce: "الأونصة",
+    pb_dollar: "الدولار",
+
     // Shops
     shops_subtitle: "اكتشف محلات الذهب المعتمدة في العراق وأسعارها اليومية",
     search_shop: "ابحث عن محل",
@@ -337,6 +351,20 @@ const DICT = {
     snapshot_label: "21K price at publish:",
     published_on: "Published on",
     affects_prefix: "Affects:",
+
+    // New magazine design
+    mag_tagline: "Everything about gold in Iraq",
+    mag_menu: "Menu",
+    mag_news_today: "Today's News",
+    mag_read_news: "Read the news",
+    mag_price_today: "Gold price today",
+    mag_latest_posts: "Latest posts",
+    mag_read_time: "{n} min read",
+    mag_disclaimer: "This article is for financial education and is not investment advice.",
+    mag_en_pending: "English version coming soon — showing the Arabic article.",
+    pb_gram21: "Gram 21K",
+    pb_ounce: "Ounce",
+    pb_dollar: "Dollar",
 
     // Shops
     shops_subtitle: "Discover verified gold shops in Iraq and their daily prices",

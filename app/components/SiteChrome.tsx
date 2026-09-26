@@ -17,7 +17,8 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
     document.documentElement.dir = dir;
   }, [lang, dir]);
 
-  const bare = pathname?.startsWith("/admin");
+  // الأدمن بلا chrome، والمجلة تتحكّم بواجهتها الكاملة (هيدر/فوتر خاص بها).
+  const bare = pathname?.startsWith("/admin") || pathname?.startsWith("/magazine");
   if (bare) return <>{children}</>;
 
   return (

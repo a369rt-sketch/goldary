@@ -6,18 +6,8 @@ import { fmt } from "@/app/lib/goldPricing";
 import { useT } from "@/app/lib/i18n";
 import ShareButton from "./ShareButton";
 
-const AFFECT_ICON: Record<string, string> = {
-  local: "🟢",
-  global: "🌍",
-  dollar: "💵",
-};
-
 export default function ArticleView({ article }: { article: Article }) {
-  const { t, lang } = useT();
-
-  const affects = article.affects
-    ? { icon: AFFECT_ICON[article.affects], label: t.affects[article.affects] }
-    : null;
+  const { t, lang, dir } = useT();
 
   const dateFmt = (iso: string | null) =>
     iso
@@ -28,107 +18,133 @@ export default function ArticleView({ article }: { article: Article }) {
         })
       : "";
 
+  // مدة القراءة التقريبية (~200 كلمة/دقيقة)
+  const words = (article.content ?? "").trim().split(/\s+/).filter(Boolean).length;
+  const readMin = Math.max(1, Math.round(words / 200));
+  const meta = [dateFmt(article.published_at), t.mag_read_time.replace("{n}", String(readMin))]
+    .filter(Boolean)
+    .join("، ");
+
   return (
-    <main className="container mag-article">
-      <div className="row-between" style={{ alignItems: "center" }}>
-        <a href="/magazine" className="btn-secondary small-btn">
-          {t.back_to_magazine}
-        </a>
-        <ShareButton title={article.title} />
-      </div>
-
-      <div className="row" style={{ gap: 8, flexWrap: "wrap", marginTop: 16 }}>
-        <span className="mag-tag">{t.categories[article.category]}</span>
-        {affects ? (
-          <span className="mag-affects">
-            {affects.icon} {t.affects_prefix} {affects.label}
-          </span>
-        ) : null}
-      </div>
-
-      <h1 className="title" style={{ marginTop: 12 }}>{article.title}</h1>
-
-      {article.price_snapshot_iqd != null ? (
-        <div className="snapshot">
-          {t.snapshot_label} {fmt(Number(article.price_snapshot_iqd), "IQD")}
-        </div>
-      ) : null}
-
-      {article.published_at ? (
-        <div className="muted small" style={{ marginTop: 8 }}>
-          {t.published_on} {dateFmt(article.published_at)}
-        </div>
-      ) : null}
-
-      <article className="mag-content">
-        <ReactMarkdown
-          components={{
-            // eslint-disable-next-line @next/next/no-img-element
-            img: ({ src, alt }) => (
-              <img src={typeof src === "string" ? src : ""} alt={alt ?? ""} className="mag-md-img" />
-            ),
+    <div className="mag-root" data-lang={lang} dir={dir}>
+      <div className="mag-shell" style={{ paddingBottom: 40 }}>
+        <div
+          className="mag-drift"
+          aria-hidden
+          style={{
+            position: "absolute",
+            top: -100,
+            insetInlineEnd: -120,
+            width: 440,
+            height: 440,
+            borderRadius: "50%",
+            background:
+              "radial-gradient(circle, rgba(255,250,240,0.32) 0%, rgba(255,250,240,0) 70%)",
+            pointerEvents: "none",
           }}
-        >
-          {article.content ?? ""}
-        </ReactMarkdown>
-      </article>
+        />
 
-      <style>{`
-        .mag-article { max-width: 760px; }
-        .snapshot {
-          margin-top: 14px;
-          display: inline-block;
-          padding: 8px 14px;
-          border-radius: 12px;
-          border: 1px solid rgba(215,180,90,0.4);
-          background: rgba(215,180,90,0.08);
-          color: var(--gold2);
-          font-size: 14px;
-        }
-        .mag-content {
-          margin-top: 24px;
-          line-height: 1.9;
-          font-size: 17px;
-          color: rgba(255,255,255,0.9);
-        }
-        .mag-content h1, .mag-content h2, .mag-content h3 {
-          color: var(--gold2);
-          margin: 28px 0 12px;
-        }
-        .mag-content a { color: var(--gold); text-decoration: underline; }
-        .mag-content ul, .mag-content ol { padding-inline-start: 22px; }
-        .mag-content li { margin: 6px 0; }
-        .mag-content strong { color: #fff; }
-        .mag-content blockquote {
-          border-inline-start: 3px solid var(--gold);
-          padding-inline-start: 14px;
-          color: rgba(255,255,255,0.75);
-          margin: 16px 0;
-        }
-        .mag-md-img {
-          display: block;
-          max-width: 100%;
-          height: auto;
-          margin: 18px auto;
-          border-radius: 14px;
-          border: 1px solid rgba(215,180,90,0.35);
-        }
-        .mag-tag {
-          font-size: 12px;
-          color: #111;
-          background: linear-gradient(135deg, #f2d27b, #d7b45a);
-          padding: 2px 10px;
-          border-radius: 999px;
-          font-weight: 600;
-        }
-        .mag-affects {
-          font-size: 12px;
-          color: var(--gold2);
-          border: 1px solid rgba(215,180,90,0.5);
-          padding: 2px 10px;
-          border-radius: 999px;
-        }
-      `}</style>
-    </main>
+        <div style={{ position: "relative", display: "flex", flexDirection: "column" }}>
+          {/* الهيدر: رجوع + Goldary + مشاركة */}
+          <header
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              padding: "18px 20px 10px",
+              gap: 8,
+            }}
+          >
+            <a
+              href="/magazine"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                minHeight: 44,
+                fontSize: 14,
+                fontWeight: 600,
+                color: "#4E3C31",
+                textDecoration: "none",
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4E3C31" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ transform: dir === "ltr" ? "scaleX(-1)" : undefined }}>
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+              {t.nav_magazine}
+            </a>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <ShareButton title={article.title} />
+              <span className="mag-shine mag-wordmark" style={{ fontSize: 26 }}>Goldary</span>
+            </div>
+          </header>
+
+          {/* رأس المقال */}
+          <div style={{ padding: "10px 20px 24px", display: "flex", flexDirection: "column", gap: 8 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "#4E3C31" }}>
+              {t.categories[article.category]}
+            </span>
+            <h1
+              style={{
+                margin: 0,
+                fontFamily: "var(--serif)",
+                fontWeight: 700,
+                fontSize: 44,
+                lineHeight: 1.3,
+                color: "#6B5446",
+              }}
+            >
+              {article.title}
+            </h1>
+            {article.excerpt && (
+              <p style={{ margin: 0, fontSize: 16, lineHeight: 1.85, color: "#2E2A25" }}>
+                {article.excerpt}
+              </p>
+            )}
+            {meta && <span style={{ fontSize: 13, color: "#4A4238" }}>{meta}</span>}
+
+            {article.price_snapshot_iqd != null && (
+              <span style={{ fontSize: 13, color: "#4E3C31", marginTop: 2 }}>
+                {t.snapshot_label} {fmt(Number(article.price_snapshot_iqd), "IQD")}
+              </span>
+            )}
+
+            {lang === "en" && (
+              <span style={{ fontSize: 12.5, color: "#7A5A18", marginTop: 2 }}>
+                {t.mag_en_pending}
+              </span>
+            )}
+          </div>
+
+          {/* بطاقة القراءة (cream) */}
+          <article
+            className="mag-md"
+            style={{
+              margin: "0 12px",
+              background: "#F4EEE3",
+              borderRadius: 20,
+              padding: "26px 20px 30px",
+              boxShadow: "0 16px 40px rgba(46,42,37,0.18)",
+            }}
+          >
+            <ReactMarkdown
+              components={{
+                // eslint-disable-next-line @next/next/no-img-element
+                img: ({ src, alt }) => (
+                  <img src={typeof src === "string" ? src : ""} alt={alt ?? ""} />
+                ),
+              }}
+            >
+              {article.content ?? ""}
+            </ReactMarkdown>
+          </article>
+
+          {/* تنويه */}
+          <p style={{ margin: "22px 20px 0", fontSize: 13, lineHeight: 1.8, color: "#4A4238" }}>
+            {t.mag_disclaimer}
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
