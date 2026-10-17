@@ -26,6 +26,9 @@ export default function ArticleView({ article }: { article: Article }) {
           year: "numeric",
           month: "long",
           day: "numeric",
+          // منطقة زمنية ثابتة (بغداد) حتى يتطابق التاريخ بين الخادم (UTC) والعميل
+          // ولا يحدث عدم تطابق hydration (React #418) قرب منتصف الليل.
+          timeZone: "Asia/Baghdad",
         })
       : "";
 
