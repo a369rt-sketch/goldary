@@ -103,10 +103,13 @@
   height:100%;
   transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
 }
-.mag-card:hover {
+/* الكروت تحمل .mag-reveal أيضاً، ولاحقاً .mag-reveal.in تضبط transform:none —
+   نرفع خصوصية :hover ليتغلّب على ذلك، ونعيد تعريف transition ليكون الرفع سريعاً. */
+.mag-reveal.mag-card:hover {
   transform:translateY(-3px);
   box-shadow:0 14px 34px rgba(46,42,37,0.16);
   border-color:rgba(107,84,70,0.4);
+  transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
 }
 .mag-card-cover {
   width:100%;
