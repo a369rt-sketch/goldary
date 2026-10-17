@@ -64,13 +64,76 @@
 
 .mag-shell {
   width:100%;
-  max-width:440px;
+  max-width:1200px;
   margin:0 auto;
   min-height:100vh;
   box-sizing:border-box;
   position:relative;
   overflow:hidden;
+  padding-inline:16px;
 }
+@media (min-width:768px) { .mag-shell { padding-inline:28px; } }
+@media (min-width:1100px) { .mag-shell { padding-inline:40px; } }
+
+/* عمود قراءة مريح داخل صفحة المقال (~72 حرف/سطر) بينما تملأ الخلفية الشاشة */
+.mag-read { width:100%; max-width:760px; margin-inline:auto; }
+
+/* شبكة بطاقات المقالات: عمود (موبايل) → 2 (تابلت) → 3 (لابتوب) → 4 (شاشة واسعة) */
+.mag-grid {
+  display:grid;
+  grid-template-columns:1fr;
+  gap:18px;
+  align-items:stretch;
+}
+@media (min-width:640px)  { .mag-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; } }
+@media (min-width:1000px) { .mag-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media (min-width:1360px) { .mag-grid { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+
+/* بطاقة مقال موحّدة داخل الشبكة */
+.mag-card {
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  padding:16px;
+  background:rgba(255,255,255,0.28);
+  border:1px solid rgba(46,42,37,0.12);
+  border-radius:16px;
+  text-decoration:none;
+  color:var(--ink);
+  height:100%;
+  transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.mag-card:hover {
+  transform:translateY(-3px);
+  box-shadow:0 14px 34px rgba(46,42,37,0.16);
+  border-color:rgba(107,84,70,0.4);
+}
+.mag-card-cover {
+  width:100%;
+  aspect-ratio:16/10;
+  object-fit:cover;
+  border-radius:12px;
+}
+.mag-card-meta { display:flex; justify-content:space-between; gap:10px; font-size:12.5px; color:var(--ink-muted); }
+.mag-card-cat { font-weight:600; color:var(--mocha-deep); }
+.mag-card-title {
+  margin:0;
+  font-family:var(--serif);
+  font-weight:700;
+  font-size:21px;
+  line-height:1.4;
+  color:var(--mocha);
+}
+.mag-card-excerpt { margin:0; font-size:13.5px; line-height:1.7; color:var(--ink); }
+/* البطاقة ذات الغلاف المصمّم (بلا صورة ونصّ طويل) */
+.mag-card-poster {
+  background:var(--mocha-deep);
+  border-color:transparent;
+}
+.mag-card-poster .mag-card-title,
+.mag-card-poster .mag-card-excerpt { color:var(--cream); }
+.mag-card-poster .mag-card-cat { color:var(--gold); }
+.mag-card-poster .mag-card-meta { color:#E6D9C6; }
 
 /* الكلمة اللاتينية Goldary دائماً بخط Cormorant */
 .mag-wordmark { font-family:var(--latin-serif); font-weight:600; }
@@ -109,7 +172,7 @@
 /* --- زر "إرسال مقال" العائم (ArticleEditor يستعمل هذه الكلاسات، ولا نلمس ملفه) --- */
 .mag-root .fixed { position:fixed; }
 .mag-root .bottom-8 { bottom:calc(24px + env(safe-area-inset-bottom,0px)); }
-.mag-root .right-8 { inset-inline-end:max(20px, calc(50% - 200px)); right:auto; }
+.mag-root .right-8 { inset-inline-end:max(20px, calc(50% - 600px)); right:auto; }
 .mag-root .z-40 { z-index:40; }
 .mag-root .rounded-full { border-radius:999px; }
 .mag-root .font-semibold { font-weight:600; }

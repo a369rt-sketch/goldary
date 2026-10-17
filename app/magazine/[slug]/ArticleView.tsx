@@ -1,13 +1,20 @@
 "use client";
 
+import { useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import { type Article, localizedArticle } from "@/app/lib/articles";
 import { fmt } from "@/app/lib/goldPricing";
 import { useT } from "@/app/lib/i18n";
+import { recordRead } from "@/app/lib/readingHistory";
 import ShareButton from "./ShareButton";
 
 export default function ArticleView({ article }: { article: Article }) {
   const { t, lang, dir } = useT();
+
+  // حفظ تصنيف/رابط المقال في سجل القراءة (بلا حساب) — لتخصيص الصفحة الرئيسية
+  useEffect(() => {
+    recordRead(article.category, article.slug);
+  }, [article.category, article.slug]);
 
   // العرض حسب اللغة: الإنجليزية المعتمدة فقط، وإلا العربية
   const loc = localizedArticle(article, lang);
@@ -48,7 +55,7 @@ export default function ArticleView({ article }: { article: Article }) {
           }}
         />
 
-        <div style={{ position: "relative", display: "flex", flexDirection: "column" }}>
+        <div className="mag-read" style={{ position: "relative", display: "flex", flexDirection: "column" }}>
           {/* الهيدر: رجوع + Goldary + مشاركة */}
           <header
             style={{
@@ -75,7 +82,7 @@ export default function ArticleView({ article }: { article: Article }) {
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4E3C31" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ transform: dir === "ltr" ? "scaleX(-1)" : undefined }}>
                 <path d="M9 6l6 6-6 6" />
               </svg>
-              {t.nav_magazine}
+              {t.mag_back_mag}
             </a>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <ShareButton title={article.title} />

@@ -89,6 +89,34 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
   return (data as Article) ?? null;
 }
 
+// مقتطف مشتق من النص عند غياب excerpt: إزالة رموز Markdown وأخذ أول جملتين.
+export function deriveExcerpt(content: string | null, maxChars = 160): string {
+  if (!content) return "";
+  const plain = content
+    .replace(/```[\s\S]*?```/g, " ") // كتل الكود
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ") // الصور
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1") // الروابط → نصّها
+    .replace(/^#{1,6}\s+/gm, "") // العناوين
+    .replace(/^\s*>\s?/gm, "") // الاقتباسات
+    .replace(/^\s*[-*+]\s+/gm, "") // نقاط القوائم
+    .replace(/[*_~`#>]/g, "") // رموز متبقية
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!plain) return "";
+  // أول جملتين (فواصل جُمل عربية/لاتينية)
+  const sentences = plain.match(/[^.!؟?]+[.!؟?]+|[^.!؟?]+$/g) ?? [plain];
+  let out = sentences.slice(0, 2).join(" ").trim();
+  if (out.length > maxChars) out = out.slice(0, maxChars).trimEnd() + "…";
+  return out;
+}
+
+// مقتطف العرض: excerpt إن وُجد، وإلا مشتق من النص.
+export function displayExcerpt(
+  loc: { excerpt: string | null; content: string | null }
+): string {
+  return (loc.excerpt && loc.excerpt.trim()) || deriveExcerpt(loc.content);
+}
+
 // تسميات الأقسام بالعربي
 export const CATEGORY_LABELS: Record<ArticleCategory, string> = {
   news: "أخبار",
