@@ -17,9 +17,19 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
     document.documentElement.dir = dir;
   }, [lang, dir]);
 
-  // الأدمن بلا chrome، والمجلة تتحكّم بواجهتها الكاملة (هيدر/فوتر خاص بها).
-  const bare = pathname?.startsWith("/admin") || pathname?.startsWith("/magazine");
-  if (bare) return <>{children}</>;
+  // الأدمن بلا chrome.
+  if (pathname?.startsWith("/admin")) return <>{children}</>;
+
+  // المجلة: يظهر الهيدر العام فوق هيدرها الخاص، بدون الفوتر العام
+  // (المجلة تتحكّم بنهاية صفحتها: زر عائم + تنويه).
+  if (pathname?.startsWith("/magazine")) {
+    return (
+      <>
+        <SiteHeader />
+        {children}
+      </>
+    );
+  }
 
   return (
     <>

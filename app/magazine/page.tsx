@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   getPublishedArticles,
   localizedArticle,
+  displayExcerpt,
   type Article,
   type ArticleCategory,
 } from "@/app/lib/articles";
@@ -117,8 +118,30 @@ export default function MagazinePage() {
         <div style={{ position: "relative", display: "flex", flexDirection: "column" }}>
           <MagazineHeader />
 
+          {/* زر الرجوع للواجهة الرئيسية */}
+          <div style={{ padding: "2px 0 0" }}>
+            <a
+              href="/"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                minHeight: 44,
+                fontSize: 14,
+                fontWeight: 600,
+                color: "#4E3C31",
+                textDecoration: "none",
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4E3C31" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ transform: dir === "ltr" ? "scaleX(-1)" : undefined }}>
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+              {t.home}
+            </a>
+          </div>
+
           {/* العنوان */}
-          <div style={{ padding: "4px 20px 0", display: "flex", flexDirection: "column", gap: 4 }}>
+          <div style={{ padding: "4px 0 0", display: "flex", flexDirection: "column", gap: 4 }}>
             <h1
               style={{
                 margin: 0,
@@ -135,7 +158,7 @@ export default function MagazinePage() {
           </div>
 
           {/* تبويب الرئيسية / مقالاتي */}
-          <div style={{ padding: "16px 20px 0" }}>
+          <div style={{ padding: "16px 0 0" }}>
             <div
               style={{
                 display: "grid",
@@ -186,7 +209,7 @@ export default function MagazinePage() {
           {newsToday && (
             <section
               aria-label={t.mag_news_today}
-              style={{ padding: "26px 20px 0", display: "flex", flexDirection: "column", gap: 8 }}
+              style={{ padding: "26px 0 0", display: "flex", flexDirection: "column", gap: 8 }}
             >
               <span style={{ fontSize: 13, fontWeight: 600, color: "#4E3C31" }}>{t.mag_news_today}</span>
               <h2
@@ -230,7 +253,7 @@ export default function MagazinePage() {
             aria-label={t.nav_magazine}
             style={{
               marginTop: 22,
-              padding: "0 20px",
+              padding: 0,
               display: "flex",
               gap: 8,
               overflowX: "auto",
@@ -266,169 +289,50 @@ export default function MagazinePage() {
             })}
           </nav>
 
-          {/* قائمة المنشورات */}
-          <section
-            ref={listRef}
-            aria-label={t.mag_latest_posts}
-            style={{ padding: "8px 20px 0", display: "flex", flexDirection: "column" }}
-          >
-            {loading ? (
-              <p style={{ color: "#4A4238", padding: "18px 0" }}>{t.loading}</p>
-            ) : filtered.length === 0 ? (
-              <p style={{ color: "#4A4238", padding: "18px 0" }}>{t.mag_empty}</p>
-            ) : (
-              filtered.map((a) => {
+          {/* قائمة المنشورات — شبكة متجاوبة */}
+          {loading ? (
+            <p style={{ color: "#4A4238", padding: "18px 0" }}>{t.loading}</p>
+          ) : filtered.length === 0 ? (
+            <p style={{ color: "#4A4238", padding: "18px 0" }}>{t.mag_empty}</p>
+          ) : (
+            <section
+              ref={listRef}
+              aria-label={t.mag_latest_posts}
+              className="mag-grid"
+              style={{ padding: "18px 0 0" }}
+            >
+              {filtered.map((a) => {
                 const shape = shapeOf(a);
                 const loc = localizedArticle(a, lang);
                 const cat = t.categories[a.category];
                 const date = fmtDate(a.published_at);
                 const href = `/magazine/${a.slug}`;
+                const excerpt = displayExcerpt(loc);
+                const poster = shape === "cover";
 
-                if (shape === "image") {
-                  return (
-                    <a
-                      key={a.id}
-                      href={href}
-                      className="mag-reveal"
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "minmax(0, 1fr) 104px",
-                        gap: 14,
-                        alignItems: "center",
-                        padding: "18px 0",
-                        borderBottom: "1px solid rgba(46,42,37,0.14)",
-                        textDecoration: "none",
-                        color: "#2E2A25",
-                      }}
-                    >
-                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                        <div style={{ display: "flex", gap: 10, fontSize: 12.5, color: "#4A4238" }}>
-                          <span style={{ fontWeight: 600, color: "#4E3C31" }}>{cat}</span>
-                          <span>{date}</span>
-                        </div>
-                        <h3
-                          style={{
-                            margin: 0,
-                            fontFamily: "var(--serif)",
-                            fontWeight: 700,
-                            fontSize: 22,
-                            lineHeight: 1.45,
-                            color: "#6B5446",
-                          }}
-                        >
-                          {loc.title}
-                        </h3>
-                        {loc.excerpt && (
-                          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.7 }}>{loc.excerpt}</p>
-                        )}
-                      </div>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={a.cover_image_url!}
-                        alt={loc.title}
-                        style={{
-                          width: 104,
-                          height: 104,
-                          borderRadius: 12,
-                          objectFit: "cover",
-                        }}
-                      />
-                    </a>
-                  );
-                }
-
-                if (shape === "cover") {
-                  return (
-                    <a
-                      key={a.id}
-                      href={href}
-                      className="mag-reveal"
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 10,
-                        padding: "18px 0",
-                        borderBottom: "1px solid rgba(46,42,37,0.14)",
-                        textDecoration: "none",
-                        color: "#2E2A25",
-                      }}
-                    >
-                      <div
-                        style={{
-                          minHeight: 170,
-                          borderRadius: 14,
-                          background: "#4E3C31",
-                          display: "flex",
-                          flexDirection: "column",
-                          justifyContent: "center",
-                          padding: "22px 20px",
-                          gap: 6,
-                        }}
-                      >
-                        <span style={{ fontSize: 12, color: "#E6D9C6" }}>{cat}</span>
-                        <span
-                          className="mag-shine-gold"
-                          style={{
-                            fontFamily: "var(--serif)",
-                            fontWeight: 700,
-                            fontSize: 32,
-                            lineHeight: 1.35,
-                          }}
-                        >
-                          {loc.title}
-                        </span>
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "#4A4238" }}>
-                        <span style={{ fontWeight: 600, color: "#4E3C31" }}>{cat}</span>
-                        <span>{date}</span>
-                      </div>
-                      {loc.excerpt && (
-                        <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.8 }}>{loc.excerpt}</p>
-                      )}
-                    </a>
-                  );
-                }
-
-                // short news
                 return (
                   <a
                     key={a.id}
                     href={href}
-                    className="mag-reveal"
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 6,
-                      padding: "18px 0",
-                      borderBottom: "1px solid rgba(46,42,37,0.14)",
-                      textDecoration: "none",
-                      color: "#2E2A25",
-                    }}
+                    className={poster ? "mag-reveal mag-card mag-card-poster" : "mag-reveal mag-card"}
                   >
-                    <div style={{ display: "flex", gap: 10, fontSize: 12.5, color: "#4A4238" }}>
-                      <span style={{ fontWeight: 600, color: "#4E3C31" }}>{cat}</span>
+                    {shape === "image" && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={a.cover_image_url!} alt={loc.title} className="mag-card-cover" />
+                    )}
+                    <div className="mag-card-meta">
+                      <span className="mag-card-cat">{cat}</span>
                       <span>{date}</span>
                     </div>
-                    <h3
-                      style={{
-                        margin: 0,
-                        fontFamily: "var(--serif)",
-                        fontWeight: 700,
-                        fontSize: 24,
-                        lineHeight: 1.45,
-                        color: "#6B5446",
-                      }}
-                    >
+                    <h3 className={poster ? "mag-card-title mag-shine-gold" : "mag-card-title"}>
                       {loc.title}
                     </h3>
-                    {loc.excerpt && (
-                      <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.7 }}>{loc.excerpt}</p>
-                    )}
+                    {excerpt && <p className="mag-card-excerpt">{excerpt}</p>}
                   </a>
                 );
-              })
-            )}
-          </section>
+              })}
+            </section>
+          )}
         </div>
 
         {/* الزر العائم "إرسال مقال" — يبقى كما هو من ArticleEditor */}
