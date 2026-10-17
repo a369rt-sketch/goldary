@@ -92,6 +92,8 @@ export default function MagazinePage() {
           year: "numeric",
           month: "long",
           day: "numeric",
+          // منطقة زمنية ثابتة (بغداد) لتوحيد التاريخ مع صفحة المقال وتفادي اختلاف UTC
+          timeZone: "Asia/Baghdad",
         })
       : "";
 
